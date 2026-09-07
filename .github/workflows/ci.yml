@@ -34,10 +34,15 @@ jobs:
       - name: No curriculum text in this repository
         # This repository is publishable only because it holds no
         # copyrighted Scripture or hymn text. Check, rather than trust.
+        #
+        # .github is excluded because this step's own patterns live in it,
+        # so without that the check finds itself. A check that fails on its
+        # own definition is worse than no check: it goes red for a reason
+        # nobody can act on.
         run: |
           if grep -rlE "Thy strong Word bespeaks|Look at the birds of the air" \
-               --exclude-dir=.git . ; then
-            echo "Licensed third-party text found. It belongs in the data repo."
+               --exclude-dir=.git --exclude-dir=.github . ; then
+            echo "Licensed third-party text found. It belongs in the data repository."
             exit 1
           fi
           echo "Clean."
