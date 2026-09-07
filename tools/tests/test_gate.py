@@ -341,6 +341,43 @@ class RuleTestCase(unittest.TestCase):
         lesson = load_lesson(SLUG, content_dir=self.content)
         self.assertEqual(lesson.translation, "")
 
+    # -- the sentence this whole project started from ------------------
+    #
+    # Rally Day Middle School Teacher's Guide, in "September 13, Trinity 15,
+    # Sunday School full document.pdf". Three generations of one sentence
+    # were all still in circulation: the retired original live in the app,
+    # this one in one combined PDF, and the fix in another.
+
+    HERETICAL = (
+        "ask the sharpest version of your objection, push back on an answer "
+        "you don't buy, refuse to take “because I said so” from anyone, "
+        "including Jesus."
+    )
+    CORRECTED = (
+        "push back on an answer you don't buy, “because I said so” isn't "
+        "enough. We're looking for the words of Jesus as our authority. We ask "
+        "hard questions here because the confession actually holds up, not "
+        "because the outcome is open."
+    )
+
+    def test_refusing_christs_authority_is_an_error(self):
+        self.assertIn("forbidden-phrase",
+                      self.rules_hit(PIECE.replace("A question.", self.HERETICAL)))
+
+    def test_the_corrected_wording_passes(self):
+        findings = self.findings_for(PIECE.replace("A question.", self.CORRECTED))
+        offending = [f for f in findings
+                     if f.severity == ERROR and f.rule.startswith("forbidden-phrase")]
+        self.assertEqual(offending, [], "the fix must not be flagged")
+
+    def test_argue_with_me_argue_with_the_text_still_passes(self):
+        """Piece Specifications 6b keeps this line. It must not be caught."""
+        line = "You can ask anything. Argue with me, argue with the text."
+        findings = self.findings_for(PIECE.replace("A question.", line))
+        offending = [f for f in findings
+                     if f.severity == ERROR and f.rule.startswith("forbidden-phrase")]
+        self.assertEqual(offending, [])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
