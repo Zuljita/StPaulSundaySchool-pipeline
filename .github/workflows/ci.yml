@@ -1,0 +1,43 @@
+name: pipeline
+
+# The pipeline is tested on its own, against tools/tests/data/, with no
+# checkout of the private curriculum. If these tests need real content to
+# pass, the separation has broken and that is worth knowing.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          # The cross-implementation signing test shells out to node to
+          # check worker.js and Python agree byte for byte.
+          node-version: "20"
+
+      - name: Install
+        run: pip install --quiet pyyaml python-docx reportlab pypdf cryptography
+
+      - name: Tests
+        env:
+          STPAUL_DATA: /nonexistent
+        run: python -m unittest discover -s tools/tests -v
+
+      - name: No curriculum text in this repository
+        # This repository is publishable only because it holds no
+        # copyrighted Scripture or hymn text. Check, rather than trust.
+        run: |
+          if grep -rlE "Thy strong Word bespeaks|Look at the birds of the air" \
+               --exclude-dir=.git . ; then
+            echo "Licensed third-party text found. It belongs in the data repo."
+            exit 1
+          fi
+          echo "Clean."

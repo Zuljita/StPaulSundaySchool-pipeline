@@ -1,0 +1,16 @@
+# Build output and scratch belong with the data, not here.
+dist/
+dist-draft/
+build/
+
+__pycache__/
+*.pyc
+.venv/
+venv/
+node_modules/
+.DS_Store
+Thumbs.db
+
+# Never. The signing key lives in the service's secret store.
+*.pem
+approval-key*
