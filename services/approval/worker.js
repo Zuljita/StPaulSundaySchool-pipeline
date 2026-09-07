@@ -371,7 +371,16 @@ async function handleIndex(request, env, origin) {
 
 export default {
   async fetch(request, env) {
-    const origin = env.ALLOWED_ORIGIN || "*";
+    // Compared case-insensitively: DNS is case-insensitive and the record
+    // may be written SchoolReview.stpaulaustin.org, while browsers send
+    // the Origin header lowercased. A mixed-case config value would
+    // otherwise reject every request with nothing to show why.
+    const allowed = (env.ALLOWED_ORIGIN || "").trim().toLowerCase();
+    const sent = (request.headers.get("Origin") || "").trim().toLowerCase();
+    const origin = allowed || "*";
+    if (allowed && sent && sent !== allowed) {
+      return json({ error: `origin ${sent} is not allowed` }, 403, origin);
+    }
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") return json({}, 204, origin);

@@ -37,8 +37,8 @@ Two values thread through the whole thing, so fix them first:
 
 | | GitHub Pages default | With a custom domain (preferred) |
 |---|---|---|
-| **Page URL** | `https://<org>.github.io/StPaulSundaySchool-pipeline/` | `https://sundayschool.<church-domain>/` |
-| **Origin** | `https://<org>.github.io` | `https://sundayschool.<church-domain>` |
+| **Page URL** | `https://<org>.github.io/StPaulSundaySchool-pipeline/` | `https://schoolreview.stpaulaustin.org/` |
+| **Origin** | `https://<org>.github.io` | `https://schoolreview.stpaulaustin.org` |
 
 An origin is scheme + host + port and **never a path**. For a GitHub
 project site every repository under the same account shares one origin,
@@ -52,8 +52,8 @@ repository later means redoing part of steps 3 and 4. Two ways out, and
 the second is better:
 
 **Use a custom domain.** Point Pages at something like
-`sundayschool.stpaulaustin.org` (Settings → Pages → Custom domain, plus a
-CNAME record). The origin is then the church's and never changes, no
+`schoolreview.stpaulaustin.org` (Settings → Pages → Custom domain, plus a
+DNS record). The origin is then the church's and never changes, no
 matter who owns the repository or whether it moves between accounts. This
 is the one decision that makes every later transfer a non-event.
 
@@ -150,7 +150,7 @@ cd services/approval
 
 Fill in `wrangler.toml`: `GOOGLE_CLIENT_ID`, `DATA_REPO`,
 `ALLOWED_ORIGIN` (the same origin as above), and optionally `ALLOWED_HD`
-(the Workspace domain, e.g. `stpaulaustin.org`).
+(the Workspace domain, `stpaulaustin.org`).
 
 Then the two secrets:
 
