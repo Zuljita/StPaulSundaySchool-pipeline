@@ -84,7 +84,7 @@ export STPAUL_DATA=/path/to/the/data/repo
 ```
 
 ```bash
-python -m unittest discover -s tools/tests   # 46 tests, no data repo needed
+python -m unittest discover -s tools/tests   # 50 tests, no data repo needed
 python tools/lint.py                         # rules vs content
 python tools/lint.py --baseline              # only NEW violations (what CI runs)
 python tools/verify.py                       # still what was approved?

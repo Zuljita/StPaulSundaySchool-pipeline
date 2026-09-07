@@ -21,6 +21,7 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from stpaul.model import DATA_ROOT  # noqa: E402
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
@@ -38,7 +39,7 @@ def fetch(url: str = ENDPOINT) -> list[dict]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--out", default="build/app-snapshot.json")
+    ap.add_argument("--out", default=str(DATA_ROOT / "build" / "app-snapshot.json"))
     ap.add_argument("--list", action="store_true", help="summarise and exit")
     args = ap.parse_args()
 

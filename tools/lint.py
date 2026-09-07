@@ -40,11 +40,16 @@ if hasattr(sys.stdout, "reconfigure"):      # Windows consoles default to cp1252
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 
-from stpaul.model import ContentError, all_sundays, load_lesson, load_rules
+from stpaul.model import (STANDARDS_DIR, ContentError, all_sundays, load_lesson,
+                          load_rules)
 from stpaul.rules import ERROR, check_lesson, summarize
 
 
-BASELINE_PATH = Path(__file__).resolve().parents[1] / "standards" / "lint-baseline.json"
+# The baseline records the state of the *content*, so it belongs with the
+# content. Resolving it against the pipeline checkout instead silently
+# found no baseline, made every known violation look new, and turned the
+# whole check into noise.
+BASELINE_PATH = STANDARDS_DIR / "lint-baseline.json"
 
 
 def rule_counts(findings) -> dict[str, int]:

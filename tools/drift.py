@@ -34,10 +34,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-from stpaul.model import CONTENT_DIR, REPO_ROOT, load_lesson
+from stpaul.model import CONTENT_DIR, DATA_ROOT, load_lesson
 
-SNAPSHOT = REPO_ROOT / "build" / "app-snapshot.json"
-OCR_DIR = REPO_ROOT / "build" / "ocr"
+SNAPSHOT = DATA_ROOT / "build" / "app-snapshot.json"
+OCR_DIR = DATA_ROOT / "build" / "ocr"
 
 # The app names pieces by (type, level); content/ names them by id.
 APP_TYPE_TO_ID = {
