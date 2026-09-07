@@ -30,10 +30,30 @@ asked to sign text that already breaks a written standard.
 
 ## Setup
 
-Five steps, in order. Step 2 needs Google Workspace admin; step 3 needs
+Six steps, in order. Step 3 needs Google Workspace admin; step 4 needs
 Cloudflare access.
 
-### 1. Generate the signing key
+Two values thread through the whole thing, so fix them first:
+
+| | |
+|---|---|
+| **Page URL** | `https://<org>.github.io/StPaulSundaySchool-pipeline/` |
+| **Origin** | `https://<org>.github.io` |
+
+An origin is scheme + host + port and **never a path**. For a GitHub
+project site every repository under the same account shares one origin,
+which is what both Google and the service want. Getting this wrong is the
+most common failure and it shows up as `origin_mismatch` at sign-in.
+
+### 1. Enable GitHub Pages
+
+Repository → Settings → Pages → **Source: GitHub Actions**.
+
+`.github/workflows/pages.yml` publishes `review/` on every push. Until
+Pages is enabled that workflow fails with "Get Pages site failed", which
+is expected and means only this step is outstanding.
+
+### 2. Generate the signing key
 
 ```bash
 cd /path/to/pipeline
@@ -42,12 +62,12 @@ python tools/keygen.py
 ```
 
 Writes `standards/approval-key.pub` into the data repository, and prints
-the private key **once**. Keep that terminal open for step 3.
+the private key **once**. Keep that terminal open for step 4.
 
 Commit the public key. It belongs in git: everyone verifies against it,
 so replacing it should be a visible commit someone can question.
 
-### 2. Create the Google OAuth client
+### 3. Create the Google OAuth client
 
 At <https://console.cloud.google.com/auth/clients> (Google Auth Platform
 → Clients), in a project for the church.
@@ -66,8 +86,8 @@ Then **Create client**:
 | Authorized JavaScript origins | the page's origin, e.g. `https://<org>.github.io` |
 | Authorized redirect URIs | *leave empty* |
 
-Origins are scheme + host + port, never a path. For local development add
-`http://localhost:8787` as a second origin.
+Use the **Origin** from the table above. Add `http://localhost:8787` as a
+second origin for local development.
 
 No redirect URI is needed: the app uses Google Identity Services, which
 hands the page an ID token directly rather than redirecting.
@@ -78,7 +98,7 @@ reviewer's mail, calendar or files, and nothing should.
 Copy the **Client ID**. It is public by design; it identifies the app, it
 does not authenticate it.
 
-### 3. Deploy the approval service
+### 4. Deploy the approval service
 
 ```bash
 cd services/approval
@@ -91,7 +111,7 @@ Fill in `wrangler.toml`: `GOOGLE_CLIENT_ID`, `DATA_REPO`,
 Then the two secrets:
 
 ```bash
-npx wrangler secret put APPROVAL_SIGNING_KEY   # paste the PEM from step 1
+npx wrangler secret put APPROVAL_SIGNING_KEY   # paste the PEM from step 2
 npx wrangler secret put GITHUB_TOKEN           # see below
 npx wrangler deploy
 ```
@@ -103,7 +123,7 @@ expiry and a calendar reminder.
 
 Note the deployed URL.
 
-### 4. Point the app at the service
+### 5. Point the app at the service
 
 In `review/config.js`:
 
@@ -115,15 +135,9 @@ window.STPAUL_CONFIG = {
 };
 ```
 
-Commit and push. `.github/workflows/pages.yml` publishes `review/` to
-GitHub Pages; enable Pages for the repository with **Source: GitHub
-Actions** the first time.
+Commit and push. The Pages workflow republishes `review/` automatically.
 
-If the published URL differs from what you guessed in step 2, go back and
-correct the authorized origin and `ALLOWED_ORIGIN`. A mismatch shows up
-as `origin_mismatch` at sign-in.
-
-### 5. Add the reviewers and close the gate
+### 6. Add the reviewers and close the gate
 
 In the data repository, `standards/reviewers.yml`:
 
