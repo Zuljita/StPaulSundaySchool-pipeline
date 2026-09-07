@@ -24,7 +24,8 @@ FIXTURE_STANDARDS = Path(__file__).resolve().parent / "data" / "standards"
 
 from stpaul import approval, hashing
 from stpaul.model import load_lesson, load_rules
-from stpaul.rules import ERROR, check_lesson, summarize
+from stpaul.rules import (ERROR, check_hymn_copyright, check_lesson,
+                          summarize)
 
 LESSON_YML = """\
 sunday: 2026-01-04-test
@@ -386,21 +387,39 @@ class RuleTestCase(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main(verbosity=2)
 
-
 class HymnCopyrightTestCase(unittest.TestCase):
     """A reprint licence covers a stanza only if its notice travels with it.
 
-    Two Rally Day pieces went to print quoting the stanza with no notice
-    at all, while Trinity 16 carried it correctly on every piece that
-    quoted it. That is a lapse rather than a misunderstanding, which is
-    exactly what a check catches and a person does not.
+    Two Rally Day pieces went to print quoting the block hymn with no
+    notice at all, while Trinity 16 carried it correctly on every piece
+    that quoted it. A lapse like that is what a check catches and a person
+    does not.
+
+    The fixtures below are invented rather than real hymn text. This
+    repository is public precisely because it holds no licensed content,
+    and a test is not an exemption from that: the first version of this
+    file quoted the actual stanza, and the CI check that exists to keep
+    such text out is what caught it.
     """
 
-    STANZA = ("Thy strong Word bespeaks us righteous;\n"
-              "Bright with Thine own holiness.\n"
-              "Alleluia, alleluia!")
-    NOTICE = ('"Thy Strong Word," text by Martin Franzmann, (c) 1969 Concordia '
-              "Publishing House. Used by permission: LSB Hymn License no. 110004997.")
+    MARKER = "flimsy borogove gyres"          # stands in for a stanza line
+    STANZA = f"A line of verse, {MARKER}, and another line."
+    NOTICE = ('"A Hymn," text by A. Author, (c) 1969 Concordia Publishing '
+              "House. Used by permission: LSB Hymn License no. 110004997.")
+
+    RULES = {
+        "hymn_copyright": {
+            "severity": "error",
+            "source": "LSB Hymn License no. 110004997",
+            "quoted_markers": [MARKER],
+            "required": [
+                {"pattern": "Concordia Publishing House", "name": "copyright holder"},
+                {"pattern": "1969", "name": "copyright year"},
+                {"pattern": "LSB Hymn License|110004997", "name": "licence number"},
+            ],
+            "message": "Missing the notice the reprint licence requires.",
+        }
+    }
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="stpaul-hymn-"))
@@ -408,7 +427,6 @@ class HymnCopyrightTestCase(unittest.TestCase):
         (self.content / SLUG / "pieces").mkdir(parents=True)
         (self.content / SLUG / "lesson.yml").write_text(LESSON_YML, encoding="utf-8")
         self.piece = self.content / SLUG / "pieces" / "01-family-take-home.md"
-        self.rules = load_rules(FIXTURE_STANDARDS)
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
@@ -416,21 +434,26 @@ class HymnCopyrightTestCase(unittest.TestCase):
     def hits(self, body: str) -> int:
         self.piece.write_text(body, encoding="utf-8")
         lesson = load_lesson(SLUG, content_dir=self.content)
-        return sum(1 for f in check_lesson(self.rules, lesson)
-                   if f.rule == "hymn-copyright-notice")
+        return len(check_hymn_copyright(self.RULES, lesson))
 
     def test_quoted_stanza_without_notice_is_an_error(self):
         self.assertEqual(self.hits(PIECE.replace("A stanza.", self.STANZA)), 1)
 
     def test_quoted_stanza_with_the_notice_passes(self):
         self.assertEqual(
-            self.hits(PIECE.replace("A stanza.", self.STANZA + "\n\n" + self.NOTICE)), 0)
+            self.hits(PIECE.replace(
+                "A stanza.", self.STANZA + "\n\n" + self.NOTICE)), 0)
 
     def test_naming_the_hymn_without_quoting_it_needs_no_notice(self):
         """Telling a teacher to sing it is not a reproduction."""
         self.assertEqual(
-            self.hits(PIECE.replace("A stanza.", 'Sing LSB 578, "Thy Strong Word."')), 0)
+            self.hits(PIECE.replace("A stanza.", 'Sing LSB 578 together.')), 0)
 
     def test_a_partial_notice_is_still_an_error(self):
-        partial = self.STANZA + '\n\nText by Martin Franzmann.'
-        self.assertEqual(self.hits(partial.join(PIECE.split("A stanza."))), 1)
+        """The case most likely to look fine at a glance."""
+        partial = self.STANZA + "\n\nText by A. Author."
+        self.assertEqual(self.hits(PIECE.replace("A stanza.", partial)), 1)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
