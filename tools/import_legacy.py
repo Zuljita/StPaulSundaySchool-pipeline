@@ -223,6 +223,122 @@ def _extract(path: Path, *, blue_is_heading: bool) -> tuple[str, list[str]]:
     return body, headings
 
 
+# Heading 1 text in a combined review document, mapped onto the manifest.
+# Matched loosely because the drafts label levels inconsistently
+# ("Pre-K/K", "Primary (1-2)"), which is itself one of the open conflicts.
+COMBINED_MAP = [
+    (r"family\s*take[- ]?home",                    "family-take-home",            "family_take_home", "all",           1),
+    (r"nursery",                                   "nursery-notes",               "nursery_notes",    "nursery",       2),
+    (r"teacher.s guide.*pre-?k",                   "prek-teacher-guide",          "teacher_guide",    "pre_k",         3),
+    (r"(student handout|craft page).*pre-?k",      "prek-craft-page",             "craft_page",       "pre_k",         4),
+    (r"teacher.s guide.*primary",                  "primary-teacher-guide",       "teacher_guide",    "primary",       5),
+    (r"student handout.*primary",                  "primary-student-handout",     "student_handout",  "primary",       6),
+    (r"teacher.s guide.*intermediate",             "intermediate-teacher-guide",  "teacher_guide",    "intermediate",  7),
+    (r"student handout.*intermediate",             "intermediate-student-handout","student_handout",  "intermediate",  8),
+    (r"teacher.s guide.*middle",                   "middleschool-teacher-guide",  "teacher_guide",    "middle_school", 9),
+    (r"student handout.*middle",                   "middleschool-student-handout","student_handout",  "middle_school", 10),
+    (r"teacher.s guide.*high",                     "highschool-teacher-guide",    "teacher_guide",    "high_school",   11),
+    (r"student handout.*high",                     "highschool-student-handout",  "student_handout",  "high_school",   12),
+]
+
+
+def split_combined(path: Path) -> list[tuple[str, str, str, int, str, list[str]]]:
+    """Split a plain-formatted combined review document into its pieces.
+
+    The combined draft carries no brand styling by design (Weekly
+    Production Workflow step 4), so structure comes from Word's own
+    heading styles instead of from colour: Heading 1 starts a piece,
+    Heading 2 starts a section.
+    """
+    doc = Document(str(path))
+    pieces: list[tuple[str, str, str, int, str, list[str]]] = []
+    current: dict | None = None
+
+    def close():
+        if current and current["lines"]:
+            body = re.sub(r"\n{3,}", "\n\n", "\n".join(current["lines"])).strip()
+            pieces.append((current["id"], current["type"], current["level"],
+                           current["order"], body, current["headings"]))
+
+    for p in _iter_paragraphs(doc):
+        text = p.text.strip()
+        style = (p.style.name if p.style else "") or ""
+        if not text:
+            continue
+
+        if style == "Heading 1":
+            close()
+            current = None
+            low = text.lower()
+            for pattern, pid, ptype, level, order in COMBINED_MAP:
+                if re.search(pattern, low):
+                    current = {"id": pid, "type": ptype, "level": level,
+                               "order": order, "lines": [], "headings": []}
+                    break
+            if current is None:
+                print(f"  (unmatched Heading 1, skipped: {text[:60]!r})")
+            continue
+
+        if current is None:
+            continue
+
+        if style == "Heading 2":
+            current["headings"].append(text)
+            current["lines"] += ["", f"## {text}", ""]
+            continue
+
+        if CHECKBOX.match(text):
+            current["lines"].append(f"- {CHECKBOX.sub('', text)}")
+            continue
+
+        current["lines"] += [text, ""]
+
+    close()
+    pieces.sort(key=lambda t: t[3])
+    return pieces
+
+
+def import_combined(slug: str, doc_path: Path, *, force: bool) -> int:
+    dest = CONTENT_DIR / slug
+    if dest.exists() and not force:
+        print(f"{dest} already exists. Pass --force to overwrite.", file=sys.stderr)
+        return 2
+    (dest / "pieces").mkdir(parents=True, exist_ok=True)
+
+    pieces = split_combined(doc_path)
+    found = []
+    for pid, ptype, level, order, body, headings in pieces:
+        out = [
+            "---",
+            f"piece: {pid}",
+            f"type: {ptype}",
+            f"level: {level}",
+            f"order: {order}",
+            f"imported_from: {doc_path.name!r}",
+            "---",
+            "",
+            f"# {_title_case(pid.replace('-', ' '))}",
+            "",
+            body,
+            "",
+        ]
+        (dest / "pieces" / f"{order:02d}-{pid}.md").write_text("\n".join(out), encoding="utf-8")
+        found.append(pid)
+        print(f"  {order:>2}. {pid:<32} {len(headings)} section(s)")
+
+    missing = [m[1] for m in COMBINED_MAP if m[1] not in found]
+    lesson_yml = dest / "lesson.yml"
+    if not lesson_yml.exists() or force:
+        lesson_yml.write_text(_lesson_stub(slug, missing), encoding="utf-8")
+
+    print(f"\nImported {len(found)}/12 pieces into content/{slug}/")
+    if missing:
+        print(f"Not present in the document: {', '.join(missing)}")
+    print("\nNothing was rewritten. Run tools/lint.py to see what the draft "
+          "already violates.")
+    return 0
+
+
 def import_sunday(slug: str, src: Path, *, force: bool) -> int:
     dest = CONTENT_DIR / slug
     pieces_dir = dest / "pieces"
@@ -356,13 +472,17 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("sunday")
-    ap.add_argument("--from", dest="src", required=True)
+    ap.add_argument("--from", dest="src", required=True,
+                    help="a directory of split .docx pieces, or one combined review .docx")
     ap.add_argument("--force", action="store_true")
     args = ap.parse_args()
 
     src = Path(args.src).resolve()
+    if src.is_file() and src.suffix.lower() == ".docx":
+        print(f"Importing {args.sunday} from the combined document {src.name}\n")
+        return import_combined(args.sunday, src, force=args.force)
     if not src.is_dir():
-        print(f"No such directory: {src}", file=sys.stderr)
+        print(f"No such directory or .docx: {src}", file=sys.stderr)
         return 2
     print(f"Importing {args.sunday} from {src}/\n")
     return import_sunday(args.sunday, src, force=args.force)
