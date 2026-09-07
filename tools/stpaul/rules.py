@@ -398,6 +398,36 @@ def check_scripture_copyright(rules: dict, lesson: Lesson) -> list[Finding]:
     return out
 
 
+def check_hymn_copyright(rules: dict, lesson: Lesson) -> list[Finding]:
+    """A reprint licence covers a stanza only if the notice travels with it.
+
+    Naming a hymn needs no notice. Printing its words does, and the
+    licence's conditions are the whole reason the reproduction is
+    permitted, so a missing notice is not a formatting nit. Two Rally Day
+    pieces went to print without one.
+    """
+    spec = rules.get("hymn_copyright") or {}
+    if not spec:
+        return []
+    markers = spec.get("quoted_markers") or []
+    required = spec.get("required") or []
+    out = []
+    for piece in lesson.pieces:
+        body = piece.body
+        if not any(re.search(re.escape(m), body, re.I) for m in markers):
+            continue
+        missing = [r["name"] for r in required
+                   if not re.search(r["pattern"], body, re.I)]
+        if missing:
+            out.append(Finding(
+                severity=spec.get("severity", ERROR), rule="hymn-copyright-notice",
+                message=f"Quotes a hymn stanza but is missing: {', '.join(missing)}. "
+                        + spec.get("message", ""),
+                source=spec.get("source", ""), piece=piece.path.name,
+            ))
+    return out
+
+
 def check_open_conflicts(rules: dict, lesson: Lesson) -> list[Finding]:
     """Surface unresolved contradictions between the standards documents.
 
@@ -433,6 +463,7 @@ CHECKS = [
     check_lords_prayer,
     check_translation_consistency,
     check_scripture_copyright,
+    check_hymn_copyright,
     check_level_labels,
     check_open_conflicts,
 ]

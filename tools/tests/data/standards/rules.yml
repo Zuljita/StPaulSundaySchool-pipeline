@@ -1,12 +1,7 @@
 # TEST FIXTURE. Not the rules that run.
 #
-# The live rules live in the data repository, at standards/rules.yml,
-# because they are this congregation's governance rather than the
-# pipeline's configuration. This copy exists so the pipeline's own test
-# suite can run without a checkout of the private data.
-#
-# It proves the engine applies rules correctly. Whether the live content
-# obeys the live rules is the data repository's CI to answer.
+# The live rules live in the data repository. This copy lets the
+# pipeline's tests run without a checkout of the private data.
 #
 # St. Paul Sunday School — Machine-Enforced Rules
 #
@@ -379,6 +374,47 @@ scripture_copyright:
   message: >-
     Every piece printing Scripture must carry the acknowledgement its
     publisher requires. Neither translation in use is public domain.
+
+# ---------------------------------------------------------------------
+# Hymn copyright.
+#
+# The block hymn is under copyright and is reproduced under a reprint
+# licence. A reprint licence is conditional: the reproduction has to
+# carry the copyright holder and the licence number. A stanza printed
+# without them is not covered by the licence at all, which makes this the
+# one rule here with a direct bearing on whether the congregation is
+# within its permissions.
+#
+# Two Rally Day pieces went to print quoting the stanza with no notice.
+# Trinity 16 carries it correctly on all five pieces that quote it, so
+# this is a lapse rather than a misunderstanding, which is exactly the
+# kind of thing a check catches and a person does not.
+# ---------------------------------------------------------------------
+hymn_copyright:
+  severity: error
+  source: "LSB Hymn License no. 110004997; ONE LICENSE A-730382"
+
+  # Wording that only appears if a stanza is actually reproduced. Naming a
+  # hymn, or telling a teacher to sing it, needs no notice; printing its
+  # words does.
+  quoted_markers:
+    - "bespeaks us righteous"
+    - "Alleluia, alleluia"
+
+  # All of these must appear on a piece that quotes a stanza.
+  required:
+    - pattern: "Concordia Publishing House"
+      name: "copyright holder"
+    - pattern: "1969"
+      name: "copyright year"
+    - pattern: "LSB Hymn License|ONE LICENSE|110004997|A-730382"
+      name: "licence number"
+
+  message: >-
+    This piece reproduces a copyrighted hymn stanza without the notice the
+    reprint licence requires. The licence covers the reproduction only
+    when the copyright holder and the licence number appear with it.
+    Trinity 16's pieces show the correct form.
 
 # ---------------------------------------------------------------------
 # Level labels are printed text. Core-Standards.md §3 states they appear
