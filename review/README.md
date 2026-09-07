@@ -35,15 +35,59 @@ Cloudflare access.
 
 Two values thread through the whole thing, so fix them first:
 
-| | |
-|---|---|
-| **Page URL** | `https://<org>.github.io/StPaulSundaySchool-pipeline/` |
-| **Origin** | `https://<org>.github.io` |
+| | GitHub Pages default | With a custom domain (preferred) |
+|---|---|---|
+| **Page URL** | `https://<org>.github.io/StPaulSundaySchool-pipeline/` | `https://sundayschool.<church-domain>/` |
+| **Origin** | `https://<org>.github.io` | `https://sundayschool.<church-domain>` |
 
 An origin is scheme + host + port and **never a path**. For a GitHub
 project site every repository under the same account shares one origin,
 which is what both Google and the service want. Getting this wrong is the
 most common failure and it shows up as `origin_mismatch` at sign-in.
+
+### A note on ownership, before you start
+
+The origin above is tied to whoever owns the repository, so moving the
+repository later means redoing part of steps 3 and 4. Two ways out, and
+the second is better:
+
+**Use a custom domain.** Point Pages at something like
+`sundayschool.stpaulaustin.org` (Settings → Pages → Custom domain, plus a
+CNAME record). The origin is then the church's and never changes, no
+matter who owns the repository or whether it moves between accounts. This
+is the one decision that makes every later transfer a non-event.
+
+**Or accept the rework.** It is about ten minutes: add the new origin in
+the Google console, update `ALLOWED_ORIGIN` and `DATA_REPO` in
+`wrangler.toml`, redeploy, and update `service` in `config.js` if
+Cloudflare moved too. Real, but not a reason to delay.
+
+**The Google project is the constraint that does not move.** For the
+consent screen to be **Internal**, the Google Cloud project has to be
+inside the church's Workspace organization. An Internal client for the
+church's domain cannot be created from a personal Google account, so step
+3 belongs to Bryan or a Workspace admin whoever owns the GitHub side.
+That is worth sorting before anything else here.
+
+**Prefer an organization to a personal account.** The premise of this
+whole design is that reviewers need no GitHub account, so transferring to
+the pastor personally works against it. A GitHub organization owned by the
+church, with the maintainer as an admin, outlasts any individual.
+
+### What changes on transfer
+
+Whenever the repository moves, exactly four things:
+
+| | |
+|---|---|
+| Google console | add the new origin to Authorized JavaScript origins |
+| `wrangler.toml` | `ALLOWED_ORIGIN`, and `DATA_REPO` if the data repo moved too |
+| `config.js` | `service`, only if the Worker moved to another Cloudflare account |
+| GitHub token | reissue, scoped to the data repository at its new path |
+
+Nothing in the code is pinned to an owner. Signed approvals already on
+record stay valid: a signature covers the reviewer, the Sunday and the
+content hash, none of which a transfer touches.
 
 ### 1. Enable GitHub Pages
 
