@@ -1,0 +1,35 @@
+name = "stpaul-approval"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+# The Ed25519 signing the service does needs Node-compatible crypto in the
+# Workers runtime.
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# --- public values, safe in git ------------------------------------------
+
+# OAuth client ID from Google Auth Platform > Clients. Public by design:
+# it identifies the app, it does not authenticate it.
+GOOGLE_CLIENT_ID = ""
+
+# The private data repository the service reads content from and commits
+# approvals to.
+DATA_REPO = "Zuljita/StPaulSundaySchool"
+
+# Where the review app is served from. The service refuses requests from
+# any other origin, so a copy of the page hosted elsewhere cannot use this
+# endpoint against the church's repository.
+ALLOWED_ORIGIN = ""
+
+# Optional. The Google Workspace domain reviewers must belong to, checked
+# against the token's `hd` claim. The roster in standards/reviewers.yml is
+# already an allowlist of specific addresses, so this is defence in depth
+# rather than the control: it means a personal gmail.com account cannot
+# reach the service at all, even to be rejected by name.
+ALLOWED_HD = ""
+
+# --- secrets, never in git -----------------------------------------------
+#
+#   npx wrangler secret put APPROVAL_SIGNING_KEY   # from tools/keygen.py
+#   npx wrangler secret put GITHUB_TOKEN           # write to DATA_REPO only

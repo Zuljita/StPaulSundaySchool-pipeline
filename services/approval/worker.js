@@ -36,6 +36,7 @@
  *   GOOGLE_CLIENT_ID       OAuth client id the ID token must be issued for
  *   DATA_REPO              e.g. "Zuljita/StPaulSundaySchool"
  *   ALLOWED_ORIGIN         where the review app is served from
+ *   ALLOWED_HD             optional Workspace domain reviewers must be in
  */
 
 const GOOGLE_JWKS = "https://www.googleapis.com/oauth2/v3/certs";
@@ -94,7 +95,7 @@ async function googleKeys() {
   return keys;
 }
 
-async function verifyGoogleToken(idToken, clientId) {
+async function verifyGoogleToken(idToken, clientId, allowedHd) {
   const parts = String(idToken || "").split(".");
   if (parts.length !== 3) throw new Error("malformed token");
 
@@ -123,6 +124,14 @@ async function verifyGoogleToken(idToken, clientId) {
   if (!claims.email) throw new Error("token carries no email");
   if (claims.email_verified !== true && claims.email_verified !== "true") {
     throw new Error("email is not verified with Google");
+  }
+  // Optional Workspace restriction. The `hd` claim is the hosted domain
+  // Google asserts for the account; a personal gmail.com account has none.
+  // The roster is still the control over who may approve. This only keeps
+  // accounts outside the church's Workspace from reaching the service.
+  if (allowedHd && claims.hd !== allowedHd) {
+    throw new Error(
+      `${claims.email} is not in the ${allowedHd} Google Workspace`);
   }
   return { email: String(claims.email).toLowerCase(), name: claims.name || claims.email };
 }
@@ -252,7 +261,8 @@ async function authenticate(request, env) {
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
   if (!token) throw new Error("not signed in");
 
-  const identity = await verifyGoogleToken(token, env.GOOGLE_CLIENT_ID);
+  const identity = await verifyGoogleToken(
+    token, env.GOOGLE_CLIENT_ID, env.ALLOWED_HD || "");
 
   const rosterFile = await ghGet(env, "standards/reviewers.yml");
   if (!rosterFile) throw new Error("roster not found in the data repository");
@@ -383,7 +393,7 @@ export default {
       // Anything about identity is the caller's problem to fix, and
       // saying which is the difference between a usable error and a
       // shrug. Nothing here leaks curriculum content.
-      const status = /signed in|token|roster|issuer|expired|verified/i.test(msg)
+      const status = /signed in|token|roster|issuer|expired|verified|Workspace/i.test(msg)
         ? 401 : 500;
       return json({ error: msg }, status, origin);
     }

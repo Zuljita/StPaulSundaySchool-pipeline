@@ -130,7 +130,8 @@ touch real content.
 
 1. `python tools/keygen.py` — writes the public key into the data repo,
    prints the private key once.
-2. Create a Google OAuth client id for the review app's origin.
+2. Create a Google OAuth client (Internal user type) for the review
+   app's origin.
 3. Deploy `services/approval` (see its README): set the signing key, a
    GitHub token scoped to the data repository, and the client id.
 4. Fill in `review/config.js`.

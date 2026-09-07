@@ -1,0 +1,39 @@
+name: publish review app
+
+# Serves review/ as a static site. The app holds no curriculum: it reads
+# everything through the approval service, which is the only thing with
+# access to the private data repository, and which will not answer without
+# a verified Google identity on the reviewer roster.
+#
+# The published origin is what goes in the Google OAuth client's
+# "Authorized JavaScript origins" and in the service's ALLOWED_ORIGIN.
+
+on:
+  push:
+    branches: [main]
+    paths: ["review/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: review
+      - id: deployment
+        uses: actions/deploy-pages@v4
