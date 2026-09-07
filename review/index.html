@@ -118,7 +118,7 @@ h1.sunday{font-family:var(--display);font-weight:600;font-size:1.5rem;margin:.2r
     <span class="church" id="churchName"></span>
     <span class="spacer"></span>
     <span id="who" class="church"></span>
-    <button id="signin" class="btn-ghost">Sign in with GitHub</button>
+    <button id="signin" class="btn-ghost">Sign in with Google</button>
   </div>
 </header>
 
@@ -126,6 +126,7 @@ h1.sunday{font-family:var(--display);font-weight:600;font-size:1.5rem;margin:.2r
   <p style="margin:2rem 0;color:#5a5f66">Loading…</p>
 </main>
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="config.js"></script>
 <script>
 "use strict";
@@ -135,52 +136,79 @@ const el = (t, c, x) => { const n = document.createElement(t);
   if (c) n.className = c; if (x !== undefined) n.textContent = x; return n; };
 
 // ---------------------------------------------------------------------
-// Auth. The token is kept in sessionStorage only: it dies with the tab,
-// so a shared church computer does not leave a reviewer signed in.
+// Auth. Google Identity Services, so a reviewer needs no account beyond
+// the one the church already uses. The ID token is held in memory only:
+// it is not written to storage, so closing the tab ends the session and a
+// shared church computer does not stay signed in.
+//
+// The token proves identity to the service. Whether that identity may
+// approve anything is decided by standards/reviewers.yml in the data
+// repository, which the service reads. Nothing here is authorisation.
 // ---------------------------------------------------------------------
 const Auth = {
-  get token() { try { return sessionStorage.getItem("stpaul_gh_token"); }
-                catch { return null; } },
-  set token(v) { try { v ? sessionStorage.setItem("stpaul_gh_token", v)
-                         : sessionStorage.removeItem("stpaul_gh_token"); } catch {} },
-  get user() { try { return JSON.parse(sessionStorage.getItem("stpaul_gh_user") || "null"); }
-               catch { return null; } },
-  set user(v) { try { sessionStorage.setItem("stpaul_gh_user", JSON.stringify(v)); } catch {} },
+  token: null,
+  user: null,
 
-  configured() { return !!(CFG.authEndpoint && CFG.githubClientId && CFG.repo); },
+  configured() { return !!(CFG.service && CFG.googleClientId); },
 
-  begin() {
-    const u = new URL("https://github.com/login/oauth/authorize");
-    u.searchParams.set("client_id", CFG.githubClientId);
-    u.searchParams.set("scope", "repo");
-    u.searchParams.set("redirect_uri", location.origin + location.pathname);
-    u.searchParams.set("state", Math.random().toString(36).slice(2));
-    sessionStorage.setItem("stpaul_oauth_state", u.searchParams.get("state"));
-    location.href = u.toString();
-  },
-
-  async complete() {
-    const p = new URLSearchParams(location.search);
-    const code = p.get("code"), state = p.get("state");
-    if (!code) return;
-    if (state !== sessionStorage.getItem("stpaul_oauth_state")) {
-      alert("Sign-in state did not match. Try again."); return;
-    }
-    const r = await fetch(CFG.authEndpoint, {
-      method: "POST", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({code, redirect_uri: location.origin + location.pathname}),
+  init() {
+    if (!Auth.configured() || !window.google?.accounts?.id) return;
+    google.accounts.id.initialize({
+      client_id: CFG.googleClientId,
+      callback: (res) => Auth.onCredential(res),
+      auto_select: false,
+      cancel_on_tap_outside: true,
     });
-    const data = await r.json();
-    if (data.access_token) {
-      Auth.token = data.access_token;
-      const me = await fetch("https://api.github.com/user",
-        {headers: {Authorization: "Bearer " + data.access_token}}).then(x => x.json());
-      Auth.user = {login: me.login, name: me.name};
-    }
-    history.replaceState({}, "", location.pathname + location.hash);
   },
 
-  signOut() { Auth.token = null; try { sessionStorage.removeItem("stpaul_gh_user"); } catch {} ; render(); },
+  prompt() {
+    if (!window.google?.accounts?.id) {
+      alert("Google sign-in did not load. Check your connection and reload.");
+      return;
+    }
+    google.accounts.id.prompt();
+  },
+
+  onCredential(res) {
+    Auth.token = res.credential;
+    try {
+      const claims = JSON.parse(atob(
+        res.credential.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+      // Display only. The service verifies the token's signature; nothing
+      // read here is trusted for any decision.
+      Auth.user = { email: claims.email, name: claims.name || claims.email };
+    } catch { Auth.user = null; }
+    render();
+  },
+
+  signOut() {
+    Auth.token = null; Auth.user = null;
+    try { google.accounts.id.disableAutoSelect(); } catch {}
+    render();
+  },
+
+  headers() {
+    return Auth.token ? { Authorization: "Bearer " + Auth.token } : {};
+  },
+};
+
+// Read through the service when configured, from local files when not.
+// The data repository is private, so the service is the only path to
+// content for anyone but a maintainer with a checkout.
+const Data = {
+  async index() {
+    if (!CFG.service) return fetch("data/index.json").then((r) => r.json());
+    const r = await fetch(CFG.service + "/sundays", { headers: Auth.headers() });
+    if (!r.ok) throw new Error((await r.json()).error || r.statusText);
+    return r.json();
+  },
+  async sunday(slug) {
+    if (!CFG.service) return fetch(`data/${slug}.json`).then((r) => r.json());
+    const r = await fetch(CFG.service + "/sunday/" + encodeURIComponent(slug),
+                          { headers: Auth.headers() });
+    if (!r.ok) throw new Error((await r.json()).error || r.statusText);
+    return r.json();
+  },
 };
 
 // ---------------------------------------------------------------------
@@ -243,7 +271,7 @@ function findingsBlock(list) {
 // Views
 // ---------------------------------------------------------------------
 async function viewIndex(main) {
-  const idx = await fetch("data/index.json").then(r => r.json());
+  const idx = await Data.index();
   main.appendChild(el("h1", "sunday", "Sundays"));
   main.appendChild(el("p", "sub",
     "Each Sunday is reviewed as a whole. Approving binds your name to the exact text below it."));
@@ -272,8 +300,8 @@ async function viewIndex(main) {
 
 async function viewSunday(main, slug) {
   let d;
-  try { d = await fetch(`data/${slug}.json`).then(r => r.json()); }
-  catch { main.appendChild(el("p", null, "No such Sunday.")); return; }
+  try { d = await Data.sunday(slug); }
+  catch (e) { main.appendChild(el("div", "banner err", e.message)); return; }
 
   const nav = el("nav", "crumbs");
   const back = el("a", null, "← All Sundays"); back.href = "#";
@@ -340,14 +368,14 @@ function approvalBar(d) {
 
   if (!Auth.configured()) {
     w.appendChild(el("span", "hash",
-      "· sign-in not configured. Approve from the command line: " +
-      `python tools/approve.py ${d.sunday} --reviewer "Your Name" --role pastor`));
+      "· approval service not configured, reading locally. Approve from the " +
+      "command line: python tools/approve.py " + d.sunday));
     bar.appendChild(w); return bar;
   }
   if (!Auth.token) {
     const b = el("button", "btn-approve", "Sign in to approve");
-    b.onclick = () => Auth.begin();
-    w.appendChild(el("span", "hash", "· sign in with GitHub to record a decision"));
+    b.onclick = () => Auth.prompt();
+    w.appendChild(el("span", "hash", "· sign in with Google to record a decision"));
     w.appendChild(b); bar.appendChild(w); return bar;
   }
 
@@ -370,34 +398,37 @@ function approvalBar(d) {
   return bar;
 }
 
-// A review is posted against the pull request for this Sunday. GitHub
-// supplies the identity, so the record names the account that actually
-// clicked rather than a name someone typed. CI turns the approving review
-// into approvals/<sunday>.approval.json, bound to the hash below.
-async function submit(d, event, note, ...buttons) {
-  buttons.forEach(b => b.disabled = true);
-  const body = `${note || "(no note)"}\n\ncontent_sha256: ${d.content_sha256}\nsunday: ${d.sunday}`;
+// The decision goes to the approval service, which verifies the Google
+// token, checks the roster, signs the review with a key this page never
+// sees, and commits it to the private data repository. The page cannot
+// forge an approval even if someone edits the JavaScript, because it has
+// nothing to sign with.
+async function submit(d, decision, note, ...buttons) {
+  buttons.forEach((b) => (b.disabled = true));
   try {
-    const prs = await fetch(
-      `https://api.github.com/repos/${CFG.repo}/pulls?state=open&per_page=100`,
-      {headers: {Authorization: "Bearer " + Auth.token}}).then(r => r.json());
-    const pr = prs.find(p => (p.head && p.head.ref || "").includes(d.sunday));
-    if (!pr) { alert(`No open pull request found for ${d.sunday}.`); return; }
-
-    const r = await fetch(
-      `https://api.github.com/repos/${CFG.repo}/pulls/${pr.number}/reviews`,
-      {method: "POST",
-       headers: {Authorization: "Bearer " + Auth.token, "Content-Type": "application/json"},
-       body: JSON.stringify({event, body})});
-    if (!r.ok) { alert("GitHub rejected the review: " + await r.text()); return; }
-    alert(event === "APPROVE"
-      ? "Approval recorded on the pull request. The build will pick it up."
-      : "Changes requested.");
+    const r = await fetch(CFG.service + "/approve", {
+      method: "POST",
+      headers: { ...Auth.headers(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sunday: d.sunday,
+        decision,
+        note: note || "",
+        // The hash shown on screen. The service compares it with the
+        // repository's and refuses if the text moved while it was read.
+        content_sha256: d.content_sha256,
+      }),
+    });
+    const out = await r.json();
+    if (!r.ok) { alert(out.error || "The service refused the request."); return; }
+    alert(decision === "approved"
+      ? "Approval recorded for " + out.reviewer + ", bound to content "
+        + out.content_sha256.slice(0, 12) + "."
+      : "Changes requested. The Sunday stays unapproved.");
     location.reload();
   } catch (e) {
-    alert("Could not reach GitHub: " + e.message);
+    alert("Could not reach the approval service: " + e.message);
   } finally {
-    buttons.forEach(b => b.disabled = false);
+    buttons.forEach((b) => (b.disabled = false));
   }
 }
 
@@ -413,13 +444,13 @@ async function render() {
     signin.classList.add("hidden");
     who.textContent = "read-only";
   } else if (Auth.token && Auth.user) {
-    who.textContent = `${Auth.user.name || Auth.user.login}`;
+    who.textContent = Auth.user.name + " · " + Auth.user.email;
     signin.textContent = "Sign out";
     signin.onclick = () => Auth.signOut();
   } else {
     who.textContent = "";
-    signin.textContent = "Sign in with GitHub";
-    signin.onclick = () => Auth.begin();
+    signin.textContent = "Sign in with Google";
+    signin.onclick = () => Auth.prompt();
   }
 
   const slug = location.hash.replace(/^#/, "");
@@ -433,7 +464,8 @@ async function render() {
 }
 
 window.addEventListener("hashchange", render);
-(async () => { await Auth.complete(); await render(); })();
+window.addEventListener("load", () => { Auth.init(); render(); });
+render();
 </script>
 </body>
 </html>

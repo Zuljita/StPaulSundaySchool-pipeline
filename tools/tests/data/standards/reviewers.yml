@@ -1,0 +1,33 @@
+# Who may give doctrinal approval, and what it takes to pass the gate.
+#
+# This roster lives in the repo on purpose. Adding an approver is itself
+# a commit someone can see and question, rather than a setting changed
+# quietly inside a tool.
+#
+# `github` is used when a review arrives through a pull request, so the
+# approval record can name the account that clicked approve rather than
+# trusting a typed-in name.
+
+policy:
+  # How many distinct approvals a Sunday needs before it will build.
+  required_approvals: 1
+
+  # Roles that must be represented among those approvals. A build will
+  # not pass on two elders alone if "pastor" is required here.
+  required_roles:
+    - pastor
+
+reviewers:
+  - name: "Bryan Wolfmueller"
+    role: pastor
+    github: ""          # fill in to enable PR-based approval
+    note: "Pastor, St. Paul Lutheran Church, Austin. Owns the doctrinal gate."
+
+  # Additional reviewers go here. Roles in use:
+  #   pastor   may satisfy required_roles: [pastor]
+  #   elder    additional review, does not satisfy the pastor requirement
+  #   editor   voice, typography and proofreading, not doctrine
+  #
+  # - name: "Second Pastor"
+  #   role: pastor
+  #   github: "their-github-login"

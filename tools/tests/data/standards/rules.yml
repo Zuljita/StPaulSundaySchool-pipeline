@@ -1,0 +1,599 @@
+# TEST FIXTURE. Not the rules that run.
+#
+# The live rules live in the data repository, at standards/rules.yml,
+# because they are this congregation's governance rather than the
+# pipeline's configuration. This copy exists so the pipeline's own test
+# suite can run without a checkout of the private data.
+#
+# It proves the engine applies rules correctly. Whether the live content
+# obeys the live rules is the data repository's CI to answer.
+#
+# St. Paul Sunday School — Machine-Enforced Rules
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# Every rule below was already written down, in prose, in the standards
+# documents beside this file. Several of them shipped in print anyway.
+# Trinity 16 went out with 52 em dashes, with "Was ist das?" in a header
+# five weeks after it was retired, and with "Catechism Connection" as a
+# heading where the standard mandates "From the Small Catechism".
+#
+# The Weekly Production Workflow (05, step 4) already says the em-dash
+# check is "a mechanical check, not a judgment call to skip" and that
+# "restating the rule has not been sufficient on its own to keep it from
+# recurring." That is correct, and it is the whole thesis of this file:
+# a rule enforced by asking a language model to remember it is not
+# enforced. A rule in this file is enforced by `tools/lint.py`, which
+# fails the build.
+#
+# HOW TO CHANGE A RULE
+# --------------------
+# Edit this file. Every rule carries `source:` naming the governing
+# document and section it comes from. If a rule here disagrees with the
+# prose, the prose wins and this file is the bug — fix it here and say so
+# in the commit. Do not delete a rule to make a build pass.
+#
+# Rules apply to files under content/ only. The standards documents and
+# this file are not curriculum prose and are not linted.
+
+version: 1
+
+# ---------------------------------------------------------------------
+# Severities
+#   error   — blocks approval and blocks the build.
+#   warning — reported, does not block. Use for rules with real false
+#             positive risk, where a human should look rather than a
+#             regex decide.
+# ---------------------------------------------------------------------
+
+forbidden_characters:
+  - char: "—"
+    name: em dash
+    severity: error
+    source: "Wolfmueller-Voice-Guide.md § Diction, Rhythm, and Punctuation"
+    message: >-
+      Do not use the em dash. Use a comma, a period and a new sentence,
+      or a colon, whichever reads best in context.
+
+forbidden_phrases:
+
+  # --- Retired terminology -------------------------------------------
+  - pattern: "was ist das"
+    severity: error
+    source: "06-Piece-Specifications.md §6a (revision 9b, Sept 4 2026)"
+    message: >-
+      "Was ist das?" is retired from all curriculum pieces. Primary's
+      recurring teaching device is named "What does this mean?" in
+      English only.
+
+  - pattern: "doubt is welcome"
+    severity: error
+    source: "06-Piece-Specifications.md §6b (revision 11, Sept 4 2026)"
+    message: >-
+      Retired framing. Questioning and scrutiny are welcomed; doubt as a
+      destination is not offered. Say that the hardest objections are
+      wanted because the confession holds up.
+
+  # --- Subordinating Christ's authority to the hearer's judgment -----
+  #
+  # This is the one that started the project. The Rally Day Middle
+  # School Teacher's Guide, in "September 13, Trinity 15, Sunday School
+  # full document.pdf", told teachers to say to the room:
+  #
+  #   "ask the sharpest version of your objection, push back on an
+  #    answer you don't buy, refuse to take 'because I said so' from
+  #    anyone, including Jesus."
+  #
+  # That is not a strong invitation to question. It instructs children
+  # to refuse Christ's word as sufficient authority, which inverts the
+  # relationship between the Word and the hearer that this whole
+  # curriculum exists to teach. Core Standards §1 says the Gospel is
+  # given, not offered as a transaction, and §2 subscribes quia to the
+  # Book of Concord: Scripture is the norm that judges us, not the claim
+  # we sit in judgment on.
+  #
+  # A later revision fixed it to: "'because I said so' isn't enough.
+  # We're looking for the words of Jesus as our authority." Both
+  # versions are still sitting in the archive, in two 24-page PDFs of the
+  # same Sunday, and nothing in either filename says which is current.
+  #
+  # 06-Piece-Specifications §6b already draws the right line: the
+  # hardest objections are wanted *because the confession holds up*.
+  # Scrutiny is aimed at our answers. It is not aimed at Christ's.
+  - pattern: "(refuse|don't|do not|never) (to )?(take|accept|trust|believe).{0,80}(including|even) (jesus|christ|god|scripture|the bible)"
+    severity: error
+    source: "Core-Standards.md §1, §2; 06-Piece-Specifications.md §6b"
+    message: >-
+      This tells the room to refuse Christ's word as authority. Questioning
+      is aimed at our answers, never at His. Say that the hardest
+      objections are wanted because the confession holds up, and that the
+      words of Jesus are the authority being appealed to.
+
+  - pattern: "(including|even|not even) (jesus|christ) (himself )?(gets|is|has)? ?(no|an? )?(exception|pass|free pass)"
+    severity: error
+    source: "Core-Standards.md §1, §2"
+    message: >-
+      Places Christ under the hearer's judgment. See Core Standards §1.
+
+  - pattern: "\\bunbelief itself\\b"
+    severity: warning
+    source: "06-Piece-Specifications.md §6b"
+    message: >-
+      Appeared alongside the retired doubt framing. Check that the
+      surrounding paragraph draws §6b's distinction correctly: questioning
+      welcomed, unresolved unbelief not offered as a destination.
+
+  # --- Decision theology (Core Standards §1, §2) ---------------------
+  - pattern: "ask(ing|ed)? jesus into (your|his|her|their|my) heart"
+    severity: error
+    source: "Core-Standards.md §1 The Governing Idea"
+    message: >-
+      Decision theology. The child is addressed as a baptized saint, not
+      a prospect. The Gospel is given, not offered as a transaction.
+
+  - pattern: "invite jesus into (your|his|her|their|my) heart"
+    severity: error
+    source: "Core-Standards.md §1"
+    message: "Decision theology. See Core Standards §1."
+
+  - pattern: "accept(ing|ed)? jesus as (your|his|her|their|my) personal savior"
+    severity: error
+    source: "Core-Standards.md §1"
+    message: "Decision theology. See Core Standards §1."
+
+  - pattern: "(make|made|making) a decision for christ"
+    severity: error
+    source: "Core-Standards.md §1"
+    message: "Decision theology. See Core Standards §1."
+
+  - pattern: "give your (heart|life) to jesus"
+    severity: error
+    source: "Core-Standards.md §1"
+    message: "Decision theology. See Core Standards §1."
+
+  # --- AI tells (Voice Guide § Don't) ---------------------------------
+  - pattern: "\\bdelve\\b"
+    severity: error
+    source: "Wolfmueller-Voice-Guide.md § Do and Don't"
+    message: "Stock AI-prose signal. Write like a person talking."
+  - pattern: "\\btapestry\\b"
+    severity: error
+    source: "Wolfmueller-Voice-Guide.md § Do and Don't"
+    message: "Stock AI-prose signal."
+  - pattern: "in today's fast-paced world"
+    severity: error
+    source: "Wolfmueller-Voice-Guide.md § Do and Don't"
+    message: "Stock AI-prose signal."
+  - pattern: "it's important to note"
+    severity: error
+    source: "Wolfmueller-Voice-Guide.md § Do and Don't"
+    message: "Stock AI-prose signal."
+  - pattern: "\\bnavigat(e|ing) (the|this|your) \\w+"
+    severity: warning
+    source: "Wolfmueller-Voice-Guide.md § Do and Don't"
+    message: >-
+      "Navigate" as an abstraction is a stock AI-prose signal. Literal
+      navigation is fine, so this is a warning rather than an error.
+
+  # --- Markety church language (Voice Guide § Don't) -------------------
+  - pattern: "worship experience"
+    severity: error
+    source: "Wolfmueller-Voice-Guide.md § Do and Don't"
+    message: "Corporate/markety church prose. The voice is warm but never a brand."
+  - pattern: "vibrant community"
+    severity: error
+    source: "Wolfmueller-Voice-Guide.md § Do and Don't"
+    message: "Corporate/markety church prose."
+
+  # --- Moralism markers (advisory — real false-positive risk) ---------
+  - pattern: "\\bso (be|you should be) (brave|kind|good|strong|faithful)\\b"
+    severity: warning
+    source: "Core-Standards.md §1 (moralism is an explicitly refused anti-pattern)"
+    message: >-
+      Possible moralism. Every lesson preaches Christ, not the hero of
+      the story. The "so what" lands on what has been done for you, then
+      on vocation, never on "try harder". A human should read this.
+  - pattern: "\\btry harder\\b"
+    severity: warning
+    source: "Core-Standards.md §1"
+    message: "Possible moralism. See Core Standards §1."
+  - pattern: "\\bbe like (david|daniel|esther|moses|noah|joseph)\\b"
+    severity: warning
+    source: "Core-Standards.md §1 (Bible-hero worship is a refused anti-pattern)"
+    message: "Possible Bible-hero moralism. See Core Standards §1."
+
+# ---------------------------------------------------------------------
+# Nothing internal on the page. Core-Standards.md §4:
+#   "Anything written into the handoff may be printed and put in a
+#    volunteer's hand. No section references, no production notes, no
+#    DRAFT markers surviving to handoff."
+# ---------------------------------------------------------------------
+draft_markers:
+  severity: error
+  source: "Core-Standards.md §4 Standing Production Parameters"
+  patterns:
+    - "\\bDRAFT\\b"
+    - "\\bTBD\\b"
+    - "\\bTODO\\b"
+    - "\\[Insert\\b"
+    - "\\[placeholder"
+    - "\\bFIXME\\b"
+    - "\\{\\{"
+    - "\\bLorem ipsum\\b"
+    # Found live in the Base44 app, standing where the Gospel text
+    # should be on four Rally Day student handouts. A placeholder that
+    # replaces Scripture is the worst case this rule exists for.
+    - "\\[full text as originally printed"
+    - "\\[.{0,40}as (originally )?printed.{0,20}\\]"
+    - "\\bstanza text withheld\\b"
+    # Editorial notes-to-self that reached published pieces.
+    - "previously labeled"
+    - "previously appeared without"
+    - "no longer a separate heading"
+    - "\\(New heading\\b"
+    # Template rendering that failed and printed its own failure. The
+    # Trinity 17 draft carries "10 min - Memory work. undefined" nine
+    # times: a JavaScript undefined that reached a lesson plan.
+    - "(?<![\\w-])undefined(?![\\w-])"
+    - "\\[object Object\\]"
+    - "(?<![\\w-])NaN(?![\\w-])"
+    - "\\bnull\\b"
+  message: >-
+    Draft marker, placeholder or production note would reach a printed
+    page. Core Standards §4: anything written into the handoff may be
+    printed and put in a volunteer's hand, so no section references, no
+    production notes, no DRAFT markers survive to handoff.
+
+# ---------------------------------------------------------------------
+# The translation a piece *claims* must match the translation the Sunday
+# declares.
+#
+# This rule was written after finding that the printed Rally Day pieces
+# carry ESV text with an ESV copyright notice, while the Base44 app
+# serves the same Sunday in NKJV with an NKJV notice, and Core Standards
+# §2 describes Rally Day as "complete in NKJV". Three sources, two
+# translations, and nothing was comparing them.
+# ---------------------------------------------------------------------
+translation_consistency:
+  severity: error
+  source: "Core-Standards.md §2; and the copyright notice each piece carries"
+  # Wording that identifies a translation regardless of how the piece is
+  # labelled. Distinctive renderings, not shared phrases.
+  fingerprints:
+    ESV:
+      - "do not be anxious"
+      - "which of you by being anxious"
+      - "sufficient for the day is its own trouble"
+    NKJV:
+      - "do not worry"
+      - "which of you by worrying"
+      - "sufficient for the day is its own trouble"
+  notices:
+    ESV: "(?i)ESV.{0,3} ?Bible|English Standard Version"
+    NKJV: "(?i)New King James|NKJV"
+  message: >-
+    The translation named in this piece's copyright notice does not match
+    the translation declared for the Sunday in lesson.yml. A printed
+    Scripture passage and its copyright notice must agree, and the app
+    and the handouts must be the same text.
+
+# ---------------------------------------------------------------------
+# Exact wording that is locked. These are strings that must appear
+# verbatim, or must appear in a specific form, per the standards.
+# ---------------------------------------------------------------------
+locked_strings:
+
+  catechism_heading:
+    severity: error
+    value: "From the Small Catechism"
+    applies_to: [teacher_guide, student_handout, family_take_home]
+    source: "Core-Standards.md §4"
+    message: >-
+      The catechism section heading is "From the Small Catechism", used
+      identically on every Teacher's Guide and every Student Handout, all
+      levels. "Catechism Connection" is not the standard heading and
+      shipped in error on Trinity 16.
+
+  attribution:
+    severity: error
+    value: >-
+      These Sunday School Lessons are built especially for St. Paul
+      Lutheran Church by Pastor Bryan Wolfmueller with Claude AI on the
+      same Sunday Gospel Lesson.
+    applies_to: [teacher_guide, nursery_notes, family_take_home]
+    forbidden_on: [student_handout, craft_page]
+    source: "Core-Standards.md §4"
+    message: >-
+      Teacher-facing pieces carry the attribution line. Student handouts
+      carry none.
+
+  lords_prayer_form:
+    severity: error
+    required_form: "trespasses"
+    forbidden_pattern: "forgive us our debts|as we forgive our debtors"
+    source: "Core-Standards.md §2"
+    message: >-
+      The Lord's Prayer is always the "trespasses" form, regardless of
+      translation. It is prayed together and never printed.
+
+# ---------------------------------------------------------------------
+# Scripture copyright.
+#
+# No Bible translation used by this program is in the public domain. The
+# NKJV is (c) 1982 Thomas Nelson; the ESV is (c) 2001 Crossway. Both
+# publishers allow quotation up to a stated limit without written
+# permission, and both require a specific acknowledgement. The full text
+# of neither translation may be stored in this repository: what lives
+# here is one weekly pericope, which is what actually gets printed.
+#
+# Limits below are the publishers' published terms, recorded so the
+# pipeline can watch the thresholds instead of anyone remembering them.
+# They are not legal advice, and the church should confirm its own use
+# with each publisher.
+# ---------------------------------------------------------------------
+scripture_copyright:
+  severity: error
+  source: "Thomas Nelson NKJV permissions; Crossway ESV permissions (crossway.org/permissions)"
+
+  translations:
+    NKJV:
+      holder: "Thomas Nelson, Inc."
+      year: 1982
+      max_verses_no_permission: 1000
+      max_share_of_book: 0.50
+      max_share_of_work: 0.50
+      notice: >-
+        Scripture taken from the New King James Version. Copyright (c) 1982
+        by Thomas Nelson, Inc. Used by permission. All rights reserved.
+      short_mark: "(NKJV)"
+      notice_pattern: "(?i)new king james|NKJV"
+
+    ESV:
+      holder: "Crossway"
+      year: 2001
+      max_verses_no_permission: 500
+      max_share_of_book: 0.50
+      # Crossway's threshold is stricter than Thomas Nelson's: quoted
+      # verses must be under 25% of the work quoting them. A one-page
+      # student handout that prints the pericope in full is the piece
+      # most likely to cross this.
+      max_share_of_work: 0.25
+      notice: >-
+        Scripture quotations are from the ESV(R) Bible (The Holy Bible,
+        English Standard Version(R)), (c) 2001 by Crossway, a publishing
+        ministry of Good News Publishers. Used by permission. All rights
+        reserved.
+      short_mark: "(ESV)"
+      notice_pattern: "(?i)ESV.{0,3} ?Bible|English Standard Version"
+      # Crossway exempts non-saleable media (church bulletins, orders of
+      # service and the like) from the full notice, provided the initials
+      # appear at the end of the quotation. Sunday School handouts are
+      # given away, so the short mark is accepted on student-facing
+      # pieces and the full notice is required on teacher-facing ones.
+      short_mark_ok_on: [student_handout, craft_page]
+
+  # Teacher-facing pieces carry the full notice in their Credits section.
+  # Student-facing pieces may carry the short mark instead.
+  full_notice_required_on: [teacher_guide, nursery_notes, family_take_home]
+
+  message: >-
+    Every piece printing Scripture must carry the acknowledgement its
+    publisher requires. Neither translation in use is public domain.
+
+# ---------------------------------------------------------------------
+# Level labels are printed text. Core-Standards.md §3 states they appear
+# verbatim in the chip at the head of every piece and are "nowhere
+# varied".
+# ---------------------------------------------------------------------
+level_labels:
+  severity: error
+  source: "Core-Standards.md §3 The Six Levels"
+  canonical:
+    nursery: "Nursery"
+    pre_k: "Pre-K / K"
+    primary: "Primary 1–2"
+    intermediate: "Intermediate 3–5"
+    middle_school: "Middle School"
+    high_school: "High School"
+  message: >-
+    Level labels are printed text and are written exactly as listed,
+    nowhere varied.
+
+# ---------------------------------------------------------------------
+# Translation is a function of the date, not of the drafter's memory.
+# ---------------------------------------------------------------------
+translation_schedule:
+  severity: error
+  source: "Core-Standards.md §2"
+  rules:
+    - on_date: "2026-09-13"
+      translation: "NKJV"
+      note: >-
+        Rally Day / Trinity 15 is complete in NKJV and stays that way. A
+        grandfathered historical exception, not the standard.
+    - from_date: "2026-09-20"
+      translation: "ESV"
+      note: "ESV effective Trinity 16 forward."
+
+# ---------------------------------------------------------------------
+# Required sections per piece type. Derived from 06-Piece-Specifications.
+# A piece missing one of these is structurally incomplete.
+# ---------------------------------------------------------------------
+required_sections:
+  severity: error
+  source: "06-Piece-Specifications.md §6, §7, §8, §9"
+
+  teacher_guide:
+    - "What You Need"
+    - "The Text"
+    - "For the Teacher"
+    - "Law and Gospel in This Text"
+    - "The Lesson"
+    - "What Children Ask"
+    - "From the Small Catechism"
+    - "Memory Work & Hymn"
+    - "Closing Prayer"
+
+  student_handout:
+    - "Hymn"
+    - "From the Small Catechism"
+    - "The Text"
+    - "Memory Work"
+
+  craft_page:
+    - "The Craft"
+    - "Memory Work"
+
+  family_take_home:
+    - "What They Heard"
+    - "A Word for the Parents"
+    - "The Verse to Say This Week"
+    - "One Question at Dinner"
+    - "From the Small Catechism"
+    - "Pray This Together"
+    - "This Week's Hymn"
+    - "Credits"
+
+  nursery_notes:
+    - "This Week's Gospel, in One Breath"
+    - "What the Big Kids Are Learning"
+    - "The One Thing"
+    - "Say This · Sing This"
+    - "Closing Prayer"
+    - "Credits"
+
+# High School has documented deviations from the Teacher's Guide
+# skeleton. 06-Piece-Specifications §6 item 10 and the Base44 export
+# standard §3.2 both allow the discussion format to absorb some sections.
+section_exemptions:
+  high_school:
+    teacher_guide:
+      - "What Children Ask"   # "High School may fold this into Discussion"
+  pre_k:
+    teacher_guide:
+      - "From the Small Catechism"  # "Pre-K omits a standalone catechism section"
+
+# ---------------------------------------------------------------------
+# The twelve pieces, in manifest order. Core-Standards.md §4.
+# A Sunday that does not have exactly these twelve does not build.
+# ---------------------------------------------------------------------
+manifest:
+  severity: error
+  source: "Core-Standards.md §4; 06-Piece-Specifications.md §2"
+  pieces:
+    - {id: family-take-home,           type: family_take_home, level: all,           order: 1}
+    - {id: nursery-notes,              type: nursery_notes,    level: nursery,       order: 2}
+    - {id: prek-teacher-guide,         type: teacher_guide,    level: pre_k,         order: 3}
+    - {id: prek-craft-page,            type: craft_page,       level: pre_k,         order: 4}
+    - {id: primary-teacher-guide,      type: teacher_guide,    level: primary,       order: 5}
+    - {id: primary-student-handout,    type: student_handout,  level: primary,       order: 6}
+    - {id: intermediate-teacher-guide, type: teacher_guide,    level: intermediate,  order: 7}
+    - {id: intermediate-student-handout, type: student_handout, level: intermediate, order: 8}
+    - {id: middleschool-teacher-guide, type: teacher_guide,    level: middle_school, order: 9}
+    - {id: middleschool-student-handout, type: student_handout, level: middle_school, order: 10}
+    - {id: highschool-teacher-guide,   type: teacher_guide,    level: high_school,   order: 11}
+    - {id: highschool-student-handout, type: student_handout,  level: high_school,   order: 12}
+
+# ---------------------------------------------------------------------
+# UNRESOLVED GOVERNANCE CONFLICTS
+#
+# These are places where two standards documents give contradictory
+# instructions. They are reported by the linter as warnings against the
+# Sunday, not silently resolved, because picking a side is a doctrinal
+# and editorial decision that belongs to Pastor Wolfmueller, not to a
+# tool and not to a language model.
+#
+# Resolve one by deciding, editing the losing document, and deleting the
+# entry here.
+# ---------------------------------------------------------------------
+open_conflicts:
+
+  - id: apostolic-benediction-printed
+    severity: warning
+    question: "Is the Apostolic Benediction printed in full, or referenced by name?"
+    positions:
+      - source: "Core-Standards.md §2"
+        says: >-
+          "Apostolic Benediction (2 Corinthians 13:14), printed in full,
+          last in the Closing. Every piece except the Family Take-Home."
+      - source: "06-Piece-Specifications.md §5c"
+        says: >-
+          "treated the same way as the Lord's Prayer: referenced by name
+          only, not reprinted every week, since the text is fixed."
+    observed: >-
+      Neither is satisfied in practice. The Apostolic Benediction does
+      not appear at all in any of the twelve Trinity 16 pieces.
+
+  - id: level-questions
+    severity: warning
+    question: "Which set of per-level questions governs, Core Standards §3 or the Levels document?"
+    positions:
+      - source: "Core-Standards.md §3"
+        says: >-
+          Pre-K "What happened?"; Primary "What happened, and what does
+          this mean?"; Intermediate "Where is the Law here, and where is
+          the Gospel?"; Middle School "Is this true? What does it demand
+          of me, and what does it give to me?"; High School "How do I
+          confess this in a world that denies it?". States that the Level
+          Question is a fixed constant.
+      - source: "09-What-Happens-at-Each-Level.md, The Five Questions"
+        says: >-
+          Pre-K "What does the text say?"; Primary "What does this
+          mean?"; Intermediate "What does it demand, and what does it
+          give?"; Middle School "What does this text claim, and how does
+          the Lord answer those who deny it?"; High School "Who denies
+          this, and how is it confessed to them?". States the questions
+          are cumulative: each level asks its own and every one beneath it.
+    note: >-
+      Not a wording variation. The Middle School question in particular
+      changes who adjudicates: "Is this true?" puts the verdict with the
+      room, while "how does the Lord answer those who deny it?" puts it
+      with the Lord. That is the same correction the retracted "rule of
+      the room" needed, so the newer document reads as deliberate. It
+      still has to be decided rather than assumed, because both documents
+      claim to state the fixed constant.
+
+  - id: teacher-guide-structure
+    severity: warning
+    question: "Is the Teacher's Guide one fixed skeleton, or does its length vary by level?"
+    positions:
+      - source: "06-Piece-Specifications.md §6"
+        says: >-
+          A fixed ten-item structure applying to all five instructional
+          levels, from "What You Need" through "Discussion Guardrails".
+      - source: "09-What-Happens-at-Each-Level.md, The Five Questions"
+        says: >-
+          "Your Teacher's Guide carries a section for each question your
+          level asks. Pre-K has one. High School has five."
+    note: >-
+      These are different documents, not different wordings of one. If
+      the Levels document governs, required_sections above has to become
+      cumulative by level and the renderers change with it. Nothing has
+      been changed on the strength of the new document alone.
+
+  - id: theme-line-effective-date
+    severity: warning
+    question: "Is the Theme Line effective Trinity 16 or Trinity 17?"
+    positions:
+      - source: "Core-Standards.md §4"
+        says: "Effective Trinity 16 forward."
+      - source: "06-Piece-Specifications.md §3"
+        says: "Effective Trinity 17 forward; not applied to Rally Day or Trinity 16."
+
+  - id: level-label-form
+    severity: warning
+    question: "Is it \"Primary 1–2\" or \"Primary (1–2)\"?"
+    positions:
+      - source: "Core-Standards.md §3"
+        says: >-
+          "Primary 1–2" — and explicitly retires the parenthetical
+          form, which "no longer matches what prints."
+      - source: "06-Piece-Specifications.md §1"
+        says: >-
+          "Primary (1–2) and Intermediate (3–5) are the standard labels
+          going forward, always with the grade range attached."
+    note: >-
+      Core-Standards is the later revision (Sept 6 vs Sept 4) and states
+      it supersedes, so level_labels above follows it. Piece
+      Specifications §1 should be updated to match, or Core Standards
+      corrected, so that only one of them is the rule.

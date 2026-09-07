@@ -18,6 +18,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+# The pipeline is tested against a fixture, never against the private
+# data repository, so `python -m unittest` works in a bare checkout.
+FIXTURE_STANDARDS = Path(__file__).resolve().parent / "data" / "standards"
+
 from stpaul import approval, hashing
 from stpaul.model import load_lesson, load_rules
 from stpaul.rules import ERROR, check_lesson, summarize
@@ -106,7 +110,7 @@ class GateTestCase(unittest.TestCase):
                                      content_sha256=digest)
         return approval.record_review(SLUG, review, content_dir=self.content,
                                       approvals_dir=self.approvals,
-                                      standards_dir=Path(__file__).resolve().parents[2] / "standards")
+                                      standards_dir=FIXTURE_STANDARDS)
 
     def verify(self, policy=None):
         return approval.verify(SLUG, content_dir=self.content,
@@ -202,7 +206,7 @@ class GateTestCase(unittest.TestCase):
                                 decision=approval.CHANGES_REQUESTED,
                                 content_sha256=digest),
             content_dir=self.content, approvals_dir=self.approvals,
-            standards_dir=Path(__file__).resolve().parents[2] / "standards")
+            standards_dir=FIXTURE_STANDARDS)
         v = self.verify()
         self.assertFalse(v.ok)
         self.assertEqual(v.status, approval.INSUFFICIENT)
@@ -255,7 +259,7 @@ class RuleTestCase(unittest.TestCase):
         (self.content / SLUG / "pieces").mkdir(parents=True)
         (self.content / SLUG / "lesson.yml").write_text(LESSON_YML, encoding="utf-8")
         self.piece_path = self.content / SLUG / "pieces" / "01-family-take-home.md"
-        self.rules = load_rules()
+        self.rules = load_rules(FIXTURE_STANDARDS)
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)

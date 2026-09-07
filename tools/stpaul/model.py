@@ -15,6 +15,7 @@ Everything here is a reader.  Nothing in this module writes to content/.
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, field
 from datetime import date
@@ -23,11 +24,44 @@ from pathlib import Path
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-CONTENT_DIR = REPO_ROOT / "content"
-APPROVALS_DIR = REPO_ROOT / "approvals"
-STANDARDS_DIR = REPO_ROOT / "standards"
-ARCHIVE_DIR = REPO_ROOT / "archive"
-DIST_DIR = REPO_ROOT / "dist"
+
+
+def _data_root() -> Path:
+    """Where the curriculum lives.
+
+    The pipeline and the curriculum are separate repositories. The
+    pipeline holds templates, rules-engine code and the review app, and
+    carries no Scripture, no hymn text and no lesson content, so it can
+    be public. The data repository holds the standards, the weekly
+    content, and the approvals, and stays private.
+
+    Resolution order:
+      1. $STPAUL_DATA, if set.
+      2. A sibling directory named StPaulSundaySchool-data, or
+         StPaulSundaySchool, next to this checkout.
+      3. This repository itself, which is how the two lived before the
+         split and how the test fixtures still work.
+    """
+    env = os.environ.get("STPAUL_DATA")
+    if env:
+        return Path(env).expanduser().resolve()
+
+    for sibling in ("StPaulSundaySchool-data", "StPaulSundaySchool"):
+        candidate = REPO_ROOT.parent / sibling
+        if candidate != REPO_ROOT and (candidate / "content").is_dir():
+            return candidate
+
+    return REPO_ROOT
+
+
+DATA_ROOT = _data_root()
+CONTENT_DIR = DATA_ROOT / "content"
+APPROVALS_DIR = DATA_ROOT / "approvals"
+STANDARDS_DIR = DATA_ROOT / "standards"
+ARCHIVE_DIR = DATA_ROOT / "archive"
+# Build output belongs beside the data it was built from, never in the
+# pipeline checkout, so a released set is stored with its own source.
+DIST_DIR = DATA_ROOT / "dist"
 
 FRONT_MATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n?", re.S)
 

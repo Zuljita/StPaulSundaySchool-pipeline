@@ -30,11 +30,14 @@ if hasattr(sys.stdout, "reconfigure"):
 
 from stpaul.approval import load_approval, verify
 from stpaul.hashing import content_hash
-from stpaul.model import CONTENT_DIR, REPO_ROOT, all_sundays, load_lesson, load_rules
+from stpaul.model import CONTENT_DIR, DATA_ROOT, all_sundays, load_lesson, load_rules
 from stpaul.render.handoff import piece_heading
 from stpaul.rules import check_lesson, summarize
 
-REVIEW_DATA = REPO_ROOT / "review" / "data"
+# Generated from content, so it belongs with the data, not with the
+# pipeline. The approval service reads it from the data repository to
+# decide what a reviewer is actually approving.
+REVIEW_DATA = DATA_ROOT / "review" / "data"
 
 
 def build(slug: str) -> dict:
@@ -52,6 +55,7 @@ def build(slug: str) -> dict:
     return {
         "sunday": slug,
         "content_sha256": digest,
+        "files": manifest,
         "meta": {k: (str(val) if hasattr(val, "isoformat") else val)
                  for k, val in lesson.meta.items()},
         "status": lesson.status,
