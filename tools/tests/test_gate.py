@@ -313,6 +313,34 @@ class RuleTestCase(unittest.TestCase):
     def test_open_conflicts_are_always_reported(self):
         self.assertIn("open-conflict", self.rules_hit(PIECE))
 
+    def test_scripture_quotation_requires_a_copyright_notice(self):
+        """No translation in use is public domain; both publishers require one."""
+        body = PIECE.replace("A verse.", "\"Do not be anxious.\" Matthew 6:25")
+        self.assertIn("missing-copyright-notice", self.rules_hit(body))
+
+    def test_esv_notice_satisfies_the_requirement(self):
+        body = PIECE.replace(
+            "A verse.",
+            '"Do not be anxious." Matthew 6:25\n\n'
+            "Scripture quotations are from the ESV Bible, copyright 2001 by Crossway.")
+        self.assertNotIn("missing-copyright-notice", self.rules_hit(body))
+
+    def test_a_piece_that_quotes_no_scripture_needs_no_notice(self):
+        self.assertNotIn("missing-copyright-notice", self.rules_hit(PIECE))
+
+    def test_undefined_from_a_failed_template_is_an_error(self):
+        """Found nine times in the Trinity 17 draft, inside lesson plans."""
+        self.assertIn("draft-marker", self.rules_hit(
+            PIECE.replace("A question.", "10 min. Memory work. undefined")))
+
+    def test_null_translation_is_not_the_string_None(self):
+        """A YAML null is an absent value, not four characters of text."""
+        (self.content / SLUG / "lesson.yml").write_text(
+            LESSON_YML.replace("translation: ESV", "translation: null"), encoding="utf-8")
+        self.piece_path.write_text(PIECE, encoding="utf-8")
+        lesson = load_lesson(SLUG, content_dir=self.content)
+        self.assertEqual(lesson.translation, "")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

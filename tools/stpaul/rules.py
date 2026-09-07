@@ -320,6 +320,84 @@ def check_translation_consistency(rules: dict, lesson: Lesson) -> list[Finding]:
     return out
 
 
+def check_scripture_copyright(rules: dict, lesson: Lesson) -> list[Finding]:
+    """Does every piece printing Scripture carry the required acknowledgement?
+
+    Neither translation in use is public domain. Both publishers permit
+    quotation up to a limit without written permission, and both require
+    a specific notice. Crossway exempts non-saleable media from the full
+    notice provided the short mark appears, which is why student-facing
+    pieces are allowed the mark alone.
+    """
+    spec = rules.get("scripture_copyright") or {}
+    if not spec or not lesson.translation:
+        return []
+    tr = lesson.translation.upper()
+    cfg = (spec.get("translations") or {}).get(tr)
+    if not cfg:
+        return []
+
+    full_on = set(spec.get("full_notice_required_on") or [])
+    mark_ok = set(cfg.get("short_mark_ok_on") or [])
+    mark = cfg.get("short_mark", f"({tr})")
+    out = []
+
+    # A piece needs a notice if it quotes Scripture at all, not only if it
+    # has a "The Text" section. Rally Day's pieces carry memory verses and
+    # a family verse without one, and those are quotations too.
+    quotes_scripture = re.compile(
+        r"\b(Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|"
+        r"Samuel|Kings|Chronicles|Ezra|Nehemiah|Esther|Job|Psalm|Psalms|Proverbs|"
+        r"Ecclesiastes|Song|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|"
+        r"Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|"
+        r"Matthew|Mark|Luke|John|Acts|Romans|Corinthians|Galatians|Ephesians|"
+        r"Philippians|Colossians|Thessalonians|Timothy|Titus|Philemon|Hebrews|James|"
+        r"Peter|Jude|Revelation)\s+\d+[:.]\d+", re.I)
+
+    for piece in lesson.pieces:
+        body = piece.body
+        if not (piece.section("The Text") or quotes_scripture.search(body)):
+            continue
+
+        has_full = bool(re.search(cfg.get("notice_pattern", tr), body))
+        has_mark = mark.lower() in body.lower()
+
+        if piece.type in full_on and not has_full:
+            out.append(Finding(
+                severity=spec.get("severity", ERROR), rule="missing-copyright-notice",
+                message=f"This piece prints Scripture but carries no {tr} copyright "
+                        f"notice. {cfg.get('holder','')} requires: "
+                        f"\"{re.sub(r'[ ]+', ' ', cfg.get('notice','')).strip()}\"",
+                source=spec.get("source", ""), piece=piece.path.name,
+            ))
+        elif piece.type in mark_ok and not (has_full or has_mark):
+            out.append(Finding(
+                severity=spec.get("severity", ERROR), rule="missing-copyright-mark",
+                message=f"This piece prints Scripture but carries neither the full {tr} "
+                        f"notice nor the short mark {mark}. Non-saleable media may use "
+                        f"the mark, but not nothing.",
+                source=spec.get("source", ""), piece=piece.path.name,
+            ))
+
+        # Crossway's share-of-work test. Advisory: the denominator here is
+        # characters of source, which is close to but not the same as what
+        # a publisher would measure on the printed page.
+        limit = cfg.get("max_share_of_work")
+        sec = piece.section("The Text")
+        if limit and sec and body:
+            share = len(sec.body) / len(body)
+            if share > limit:
+                out.append(Finding(
+                    severity=WARNING, rule="scripture-share-of-work",
+                    message=f"Scripture is roughly {share:.0%} of this piece; "
+                            f"{cfg.get('holder','the publisher')} sets the threshold at "
+                            f"{limit:.0%} of the work quoting it. Worth confirming "
+                            f"before this goes out at scale.",
+                    source=spec.get("source", ""), piece=piece.path.name,
+                ))
+    return out
+
+
 def check_open_conflicts(rules: dict, lesson: Lesson) -> list[Finding]:
     """Surface unresolved contradictions between the standards documents.
 
@@ -354,6 +432,7 @@ CHECKS = [
     check_catechism_heading,
     check_lords_prayer,
     check_translation_consistency,
+    check_scripture_copyright,
     check_level_labels,
     check_open_conflicts,
 ]

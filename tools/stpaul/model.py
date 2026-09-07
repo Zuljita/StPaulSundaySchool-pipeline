@@ -100,17 +100,27 @@ class Lesson:
             return d
         return date.fromisoformat(str(d))
 
+    def _str(self, key: str, default: str = "") -> str:
+        """A YAML null is an absent value, not the four-character string "None".
+
+        Every field in the import stubs starts as null, so without this a
+        missing translation reads back as "None" and the linter reports a
+        mismatch against a value nobody wrote.
+        """
+        v = self.meta.get(key)
+        return default if v is None else str(v)
+
     @property
     def status(self) -> str:
-        return str(self.meta.get("status", "draft"))
+        return self._str("status", "draft")
 
     @property
     def translation(self) -> str:
-        return str(self.meta.get("translation", ""))
+        return self._str("translation")
 
     @property
     def liturgical_day(self) -> str:
-        return str(self.meta.get("liturgical_day", ""))
+        return self._str("liturgical_day")
 
     def piece(self, piece_id: str) -> Piece | None:
         for p in self.pieces:
