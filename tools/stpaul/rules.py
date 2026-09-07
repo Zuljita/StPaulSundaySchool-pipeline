@@ -293,6 +293,33 @@ def check_level_labels(rules: dict, lesson: Lesson) -> list[Finding]:
     return out
 
 
+def check_translation_consistency(rules: dict, lesson: Lesson) -> list[Finding]:
+    """Does the copyright notice a piece carries match the declared translation?
+
+    Written after the Rally Day discovery: the printed pieces carry ESV
+    text and an ESV notice, the app serves NKJV text with an NKJV notice,
+    and Core Standards describes the Sunday as NKJV. Nothing compared
+    them, so all three stayed wrong at once.
+    """
+    spec = rules.get("translation_consistency") or {}
+    if not spec or not lesson.translation:
+        return []
+    declared = lesson.translation.upper()
+    notices = spec.get("notices", {})
+    out = []
+    for piece in lesson.pieces:
+        body = piece.body
+        claimed = {name for name, pat in notices.items() if re.search(pat, body)}
+        if claimed and declared not in claimed:
+            out.append(Finding(
+                severity=spec.get("severity", ERROR), rule="translation-notice-mismatch",
+                message=f'This piece carries a {"/".join(sorted(claimed))} copyright notice, '
+                        f'but the Sunday declares "{declared}". ' + spec.get("message", ""),
+                source=spec.get("source", ""), piece=piece.path.name,
+            ))
+    return out
+
+
 def check_open_conflicts(rules: dict, lesson: Lesson) -> list[Finding]:
     """Surface unresolved contradictions between the standards documents.
 
@@ -326,6 +353,7 @@ CHECKS = [
     check_attribution,
     check_catechism_heading,
     check_lords_prayer,
+    check_translation_consistency,
     check_level_labels,
     check_open_conflicts,
 ]
@@ -335,9 +363,23 @@ def check_lesson(rules: dict, lesson: Lesson) -> list[Finding]:
     findings: list[Finding] = []
     for check in CHECKS:
         findings.extend(check(rules, lesson))
+
+    # Several patterns can match the same words: "[full text as
+    # originally printed, NKJV]" trips two placeholder patterns at once.
+    # A reviewer should see one problem per problem, so collapse
+    # findings that point at the same text for the same reason.
+    seen: set[tuple] = set()
+    unique: list[Finding] = []
+    for f in findings:
+        key = (f.rule.split(":")[0], f.piece, f.line, f.excerpt, f.message[:60])
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(f)
+
     order = {ERROR: 0, WARNING: 1}
-    findings.sort(key=lambda f: (order.get(f.severity, 2), f.piece, f.line))
-    return findings
+    unique.sort(key=lambda f: (order.get(f.severity, 2), f.piece, f.line))
+    return unique
 
 
 def summarize(findings: list[Finding]) -> tuple[int, int]:

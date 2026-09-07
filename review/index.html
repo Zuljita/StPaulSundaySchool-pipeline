@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sunday School Doctrinal Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Palette and type follow standards/03-Design-and-Brand-Standard.md, so
+   what a reviewer reads on screen looks like what will print. */
+:root{
+  --navy:#002664; --navy-legacy:#1E4E72; --secondary:#2B65B5;
+  --red:#C41230; --charcoal:#292B2C; --paper:#fdfdfb; --rule:#e3e6ea;
+  --warn:#8a6d00; --warn-bg:#fff8e1; --err:#a11; --err-bg:#fdf0f0;
+  --ok:#1a6b3c; --ok-bg:#f0f8f3;
+  --display:"Montserrat",system-ui,sans-serif;
+  --text:"Lora",Georgia,serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--charcoal);
+     font-family:var(--text);font-size:16px;line-height:1.55}
+a{color:var(--secondary)}
+.wrap{max-width:60rem;margin:0 auto;padding:0 1.25rem}
+
+header.top{background:var(--navy);color:#fff;padding:.9rem 0}
+header.top .wrap{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+header.top h1{font-family:var(--display);font-weight:600;font-size:1.05rem;
+     margin:0;letter-spacing:.02em}
+header.top .church{font-size:.8rem;opacity:.75;font-family:var(--display)}
+header.top .spacer{flex:1}
+
+button{font-family:var(--display);font-size:.85rem;font-weight:600;
+     border-radius:5px;border:1px solid transparent;padding:.5rem .9rem;cursor:pointer}
+button:disabled{opacity:.45;cursor:not-allowed}
+.btn-ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.5)}
+.btn-approve{background:var(--ok);color:#fff}
+.btn-changes{background:#fff;color:var(--err);border-color:var(--err)}
+
+/* ---- Sunday index ---- */
+.card{border:1px solid var(--rule);border-radius:8px;background:#fff;
+      padding:1rem 1.15rem;margin:.85rem 0}
+.card h2{font-family:var(--display);font-size:1.05rem;margin:0 0 .2rem}
+.card .meta{font-size:.85rem;color:#5a5f66}
+.pill{display:inline-block;font-family:var(--display);font-size:.7rem;
+      font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+      padding:.2rem .5rem;border-radius:99px;margin-right:.4rem}
+.pill.err{background:var(--err-bg);color:var(--err)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pill.neutral{background:#eef1f4;color:#41474e}
+
+/* ---- Reading view ---- */
+.piece{background:#fff;border:1px solid var(--rule);border-radius:8px;
+       margin:1.5rem 0;overflow:hidden}
+.piece > h2{font-family:var(--display);font-weight:600;font-size:.9rem;
+     letter-spacing:.05em;text-transform:uppercase;color:#fff;
+     background:var(--navy);margin:0;padding:.7rem 1.15rem}
+.piece .inner{padding:.4rem 1.4rem 1.4rem}
+.section h3{font-family:var(--display);font-weight:600;font-size:.78rem;
+     letter-spacing:.06em;text-transform:uppercase;color:#fff;
+     background:var(--navy);padding:.45rem .8rem;margin:1.4rem 0 .8rem;
+     border-radius:3px}
+.section h4{font-family:var(--display);font-weight:600;font-size:.86rem;
+     color:var(--secondary);margin:1rem 0 .3rem}
+.section p{margin:.6rem 0}
+.section ul{margin:.5rem 0;padding-left:1.3rem}
+blockquote{margin:.7rem 0;padding-left:1rem;border-left:3px solid var(--rule);
+     color:#000}
+.theme{font-family:var(--display);font-style:italic;font-weight:600;
+     color:var(--secondary);text-align:center;font-size:.92rem;margin:.9rem 0 0}
+
+/* Rule findings, shown against the piece they belong to. Muted enough
+   that they do not compete with the prose being reviewed. */
+.findings{border-left:3px solid var(--err);background:var(--err-bg);
+     padding:.6rem .9rem;margin:.9rem 0;font-size:.85rem;font-family:var(--display)}
+.findings.warnonly{border-left-color:var(--warn);background:var(--warn-bg)}
+.findings h5{margin:0 0 .4rem;font-size:.75rem;letter-spacing:.05em;
+     text-transform:uppercase}
+.findings li{margin:.3rem 0}
+.findings code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+     font-size:.82em;background:rgba(0,0,0,.05);padding:.05rem .25rem;border-radius:3px}
+.findings .src{opacity:.7;font-size:.78rem}
+
+/* ---- Approval bar ---- */
+.approvebar{position:sticky;bottom:0;background:#fff;border-top:2px solid var(--navy);
+     padding:.85rem 0;box-shadow:0 -3px 12px rgba(0,0,0,.07);z-index:5}
+.approvebar .wrap{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+.hash{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.75rem;
+     color:#5a5f66}
+.note{font-family:var(--text);font-size:.9rem;padding:.45rem .6rem;
+     border:1px solid var(--rule);border-radius:5px;flex:1;min-width:14rem}
+.banner{padding:.75rem 1rem;border-radius:6px;margin:1rem 0;font-family:var(--display);
+     font-size:.88rem}
+.banner.err{background:var(--err-bg);color:var(--err)}
+.banner.ok{background:var(--ok-bg);color:var(--ok)}
+.banner.info{background:#eef2f7;color:#2b3a4a}
+.reviews{font-size:.85rem;font-family:var(--display);margin:.5rem 0}
+.reviews li{margin:.2rem 0}
+.hidden{display:none!important}
+nav.crumbs{font-family:var(--display);font-size:.82rem;margin:1.1rem 0 .3rem}
+h1.sunday{font-family:var(--display);font-weight:600;font-size:1.5rem;margin:.2rem 0}
+.sub{color:#5a5f66;font-size:.95rem;margin:0 0 1rem}
+@media print{
+  header.top,.approvebar,nav.crumbs,.findings{display:none}
+  .piece{border:none;page-break-after:always}
+  .piece>h2{color:#000;background:none;border-bottom:2px solid #000}
+  .section h3{color:#000;background:none;border-bottom:1px solid #999}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <h1>Doctrinal Review</h1>
+    <span class="church" id="churchName"></span>
+    <span class="spacer"></span>
+    <span id="who" class="church"></span>
+    <button id="signin" class="btn-ghost">Sign in with GitHub</button>
+  </div>
+</header>
+
+<main class="wrap" id="main">
+  <p style="margin:2rem 0;color:#5a5f66">Loading…</p>
+</main>
+
+<script src="config.js"></script>
+<script>
+"use strict";
+const CFG = window.STPAUL_CONFIG || {};
+const $ = (s, r) => (r || document).querySelector(s);
+const el = (t, c, x) => { const n = document.createElement(t);
+  if (c) n.className = c; if (x !== undefined) n.textContent = x; return n; };
+
+// ---------------------------------------------------------------------
+// Auth. The token is kept in sessionStorage only: it dies with the tab,
+// so a shared church computer does not leave a reviewer signed in.
+// ---------------------------------------------------------------------
+const Auth = {
+  get token() { try { return sessionStorage.getItem("stpaul_gh_token"); }
+                catch { return null; } },
+  set token(v) { try { v ? sessionStorage.setItem("stpaul_gh_token", v)
+                         : sessionStorage.removeItem("stpaul_gh_token"); } catch {} },
+  get user() { try { return JSON.parse(sessionStorage.getItem("stpaul_gh_user") || "null"); }
+               catch { return null; } },
+  set user(v) { try { sessionStorage.setItem("stpaul_gh_user", JSON.stringify(v)); } catch {} },
+
+  configured() { return !!(CFG.authEndpoint && CFG.githubClientId && CFG.repo); },
+
+  begin() {
+    const u = new URL("https://github.com/login/oauth/authorize");
+    u.searchParams.set("client_id", CFG.githubClientId);
+    u.searchParams.set("scope", "repo");
+    u.searchParams.set("redirect_uri", location.origin + location.pathname);
+    u.searchParams.set("state", Math.random().toString(36).slice(2));
+    sessionStorage.setItem("stpaul_oauth_state", u.searchParams.get("state"));
+    location.href = u.toString();
+  },
+
+  async complete() {
+    const p = new URLSearchParams(location.search);
+    const code = p.get("code"), state = p.get("state");
+    if (!code) return;
+    if (state !== sessionStorage.getItem("stpaul_oauth_state")) {
+      alert("Sign-in state did not match. Try again."); return;
+    }
+    const r = await fetch(CFG.authEndpoint, {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({code, redirect_uri: location.origin + location.pathname}),
+    });
+    const data = await r.json();
+    if (data.access_token) {
+      Auth.token = data.access_token;
+      const me = await fetch("https://api.github.com/user",
+        {headers: {Authorization: "Bearer " + data.access_token}}).then(x => x.json());
+      Auth.user = {login: me.login, name: me.name};
+    }
+    history.replaceState({}, "", location.pathname + location.hash);
+  },
+
+  signOut() { Auth.token = null; try { sessionStorage.removeItem("stpaul_gh_user"); } catch {} ; render(); },
+};
+
+// ---------------------------------------------------------------------
+// Rendering. Markdown here is deliberately minimal: the source is written
+// by people, not by a generator, and a heavy parser would be one more
+// place for what is read to differ from what is printed.
+// ---------------------------------------------------------------------
+function esc(s) { return (s || "").replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+
+function inline(s) {
+  return esc(s)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*]+?)\*(?!\*)/g, "$1<em>$2</em>");
+}
+
+function renderBody(body) {
+  const out = [];
+  for (const raw of (body || "").split(/\n\s*\n/)) {
+    const b = raw.trim();
+    if (!b) continue;
+    if (/^-{3,}$/.test(b)) continue;                       // brand standard 6
+    if (b.startsWith("### ")) { out.push(`<h4>${inline(b.slice(4))}</h4>`); continue; }
+    if (b.startsWith("> ")) {
+      out.push(`<blockquote>${inline(b.split("\n").map(l => l.replace(/^> ?/, "")).join(" "))}</blockquote>`);
+      continue;
+    }
+    if (/^[-*]\s/.test(b)) {
+      const items = b.split("\n").filter(l => /^[-*]\s/.test(l))
+        .map(l => `<li>${inline(l.replace(/^[-*]\s+/, ""))}</li>`).join("");
+      out.push(`<ul>${items}</ul>`); continue;
+    }
+    out.push(`<p>${inline(b)}</p>`);
+  }
+  return out.join("");
+}
+
+function findingsBlock(list) {
+  if (!list || !list.length) return null;
+  const errors = list.filter(f => f.severity === "error");
+  const box = el("div", "findings" + (errors.length ? "" : " warnonly"));
+  box.appendChild(el("h5", null,
+    `${errors.length} error${errors.length === 1 ? "" : "s"}, ` +
+    `${list.length - errors.length} warning${list.length - errors.length === 1 ? "" : "s"} ` +
+    `against the written standards`));
+  const ul = el("ul");
+  for (const f of list.slice(0, 40)) {
+    const li = el("li");
+    li.innerHTML = `<strong>${esc(f.severity === "error" ? "Error" : "Warning")}</strong>` +
+      (f.line ? ` line ${f.line}` : "") + ` — ${esc(f.message.split("\n")[0])}` +
+      (f.excerpt ? ` <code>${esc(f.excerpt)}</code>` : "") +
+      (f.source ? `<div class="src">${esc(f.source)}</div>` : "");
+    ul.appendChild(li);
+  }
+  box.appendChild(ul);
+  if (list.length > 40) box.appendChild(el("div", "src", `…and ${list.length - 40} more.`));
+  return box;
+}
+
+// ---------------------------------------------------------------------
+// Views
+// ---------------------------------------------------------------------
+async function viewIndex(main) {
+  const idx = await fetch("data/index.json").then(r => r.json());
+  main.appendChild(el("h1", "sunday", "Sundays"));
+  main.appendChild(el("p", "sub",
+    "Each Sunday is reviewed as a whole. Approving binds your name to the exact text below it."));
+
+  if (!idx.sundays.length) main.appendChild(el("p", null, "Nothing in content/ yet."));
+
+  for (const s of idx.sundays) {
+    const c = el("div", "card");
+    const h = el("h2");
+    const a = el("a", null, `${s.liturgical_day || s.sunday} · ${s.date || ""}`);
+    a.href = "#" + s.sunday; h.appendChild(a); c.appendChild(h);
+    c.appendChild(el("div", "meta", s.gospel || ""));
+
+    const pills = el("div"); pills.style.marginTop = ".55rem";
+    const state = s.approval_state;
+    pills.appendChild(el("span", "pill " + (state === "approved" ? "ok" : "neutral"),
+      state === "approved" ? "approved" : state.replace(/-/g, " ")));
+    if (s.errors) pills.appendChild(el("span", "pill err", `${s.errors} errors`));
+    if (s.warnings) pills.appendChild(el("span", "pill warn", `${s.warnings} warnings`));
+    pills.appendChild(el("span", "pill neutral", `${s.pieces} pieces`));
+    c.appendChild(pills);
+    c.appendChild(el("div", "hash", "content " + (s.content_sha256 || "").slice(0, 16)));
+    main.appendChild(c);
+  }
+}
+
+async function viewSunday(main, slug) {
+  let d;
+  try { d = await fetch(`data/${slug}.json`).then(r => r.json()); }
+  catch { main.appendChild(el("p", null, "No such Sunday.")); return; }
+
+  const nav = el("nav", "crumbs");
+  const back = el("a", null, "← All Sundays"); back.href = "#";
+  nav.appendChild(back); main.appendChild(nav);
+
+  main.appendChild(el("h1", "sunday",
+    `${d.meta.liturgical_day || slug} · ${d.meta.date || ""}`));
+  main.appendChild(el("p", "sub",
+    `${d.meta.gospel || ""}${d.meta.translation ? " (" + d.meta.translation + ")" : ""}`));
+
+  const ap = d.approval;
+  const banner = el("div", "banner " + (ap.ok ? "ok" : (d.lint.errors ? "err" : "info")));
+  banner.textContent = ap.ok
+    ? "Approved. " + ap.detail
+    : `${ap.detail} ${d.lint.errors} rule error(s) outstanding.`;
+  main.appendChild(banner);
+
+  if (ap.reviews && ap.reviews.length) {
+    const box = el("div", "reviews");
+    box.appendChild(el("strong", null, "Reviews on record"));
+    const ul = el("ul");
+    for (const r of ap.reviews) {
+      const current = r.content_sha256 === d.content_sha256;
+      ul.appendChild(el("li", null,
+        `${r.reviewer} (${r.role}) — ${r.decision.replace("_", " ")} at ${r.at}` +
+        (current ? "" : "  ·  applies to earlier text, does not count")));
+    }
+    box.appendChild(ul); main.appendChild(box);
+  }
+
+  const lessonFindings = findingsBlock(d.lint.by_piece._lesson);
+  if (lessonFindings) main.appendChild(lessonFindings);
+
+  for (const p of d.pieces) {
+    const art = el("article", "piece");
+    art.appendChild(el("h2", null, p.label));
+    const inner = el("div", "inner");
+    if (d.meta.theme && d.meta.theme_line_active)
+      inner.appendChild(el("p", "theme", d.meta.theme));
+
+    const fb = findingsBlock(d.lint.by_piece[p.id ? `${String(p.order).padStart(2,"0")}-${p.id}.md` : ""]);
+    if (fb) inner.appendChild(fb);
+
+    for (const s of p.sections) {
+      const sec = el("div", "section");
+      sec.appendChild(el("h3", null, s.heading));
+      const body = el("div");
+      body.innerHTML = renderBody(s.body);
+      sec.appendChild(body);
+      inner.appendChild(sec);
+    }
+    art.appendChild(inner);
+    main.appendChild(art);
+  }
+
+  main.appendChild(approvalBar(d));
+}
+
+function approvalBar(d) {
+  const bar = el("div", "approvebar");
+  const w = el("div", "wrap");
+
+  w.appendChild(el("span", "hash", "content " + d.content_sha256.slice(0, 20)));
+
+  if (!Auth.configured()) {
+    w.appendChild(el("span", "hash",
+      "· sign-in not configured. Approve from the command line: " +
+      `python tools/approve.py ${d.sunday} --reviewer "Your Name" --role pastor`));
+    bar.appendChild(w); return bar;
+  }
+  if (!Auth.token) {
+    const b = el("button", "btn-approve", "Sign in to approve");
+    b.onclick = () => Auth.begin();
+    w.appendChild(el("span", "hash", "· sign in with GitHub to record a decision"));
+    w.appendChild(b); bar.appendChild(w); return bar;
+  }
+
+  const note = el("input", "note");
+  note.placeholder = "What did you review? Any caveat.";
+  w.appendChild(note);
+
+  const approve = el("button", "btn-approve", "Approve this text");
+  const changes = el("button", "btn-changes", "Request changes");
+
+  if (d.lint.errors) {
+    approve.disabled = true;
+    approve.title = `${d.lint.errors} rule error(s) outstanding. Fix them first.`;
+  }
+
+  approve.onclick = () => submit(d, "APPROVE", note.value, approve, changes);
+  changes.onclick = () => submit(d, "REQUEST_CHANGES", note.value, approve, changes);
+  w.appendChild(approve); w.appendChild(changes);
+  bar.appendChild(w);
+  return bar;
+}
+
+// A review is posted against the pull request for this Sunday. GitHub
+// supplies the identity, so the record names the account that actually
+// clicked rather than a name someone typed. CI turns the approving review
+// into approvals/<sunday>.approval.json, bound to the hash below.
+async function submit(d, event, note, ...buttons) {
+  buttons.forEach(b => b.disabled = true);
+  const body = `${note || "(no note)"}\n\ncontent_sha256: ${d.content_sha256}\nsunday: ${d.sunday}`;
+  try {
+    const prs = await fetch(
+      `https://api.github.com/repos/${CFG.repo}/pulls?state=open&per_page=100`,
+      {headers: {Authorization: "Bearer " + Auth.token}}).then(r => r.json());
+    const pr = prs.find(p => (p.head && p.head.ref || "").includes(d.sunday));
+    if (!pr) { alert(`No open pull request found for ${d.sunday}.`); return; }
+
+    const r = await fetch(
+      `https://api.github.com/repos/${CFG.repo}/pulls/${pr.number}/reviews`,
+      {method: "POST",
+       headers: {Authorization: "Bearer " + Auth.token, "Content-Type": "application/json"},
+       body: JSON.stringify({event, body})});
+    if (!r.ok) { alert("GitHub rejected the review: " + await r.text()); return; }
+    alert(event === "APPROVE"
+      ? "Approval recorded on the pull request. The build will pick it up."
+      : "Changes requested.");
+    location.reload();
+  } catch (e) {
+    alert("Could not reach GitHub: " + e.message);
+  } finally {
+    buttons.forEach(b => b.disabled = false);
+  }
+}
+
+// ---------------------------------------------------------------------
+async function render() {
+  const main = $("#main");
+  main.innerHTML = "";
+  $("#churchName").textContent = CFG.churchName || "";
+
+  const signin = $("#signin");
+  const who = $("#who");
+  if (!Auth.configured()) {
+    signin.classList.add("hidden");
+    who.textContent = "read-only";
+  } else if (Auth.token && Auth.user) {
+    who.textContent = `${Auth.user.name || Auth.user.login}`;
+    signin.textContent = "Sign out";
+    signin.onclick = () => Auth.signOut();
+  } else {
+    who.textContent = "";
+    signin.textContent = "Sign in with GitHub";
+    signin.onclick = () => Auth.begin();
+  }
+
+  const slug = location.hash.replace(/^#/, "");
+  try {
+    if (slug) await viewSunday(main, slug);
+    else await viewIndex(main);
+  } catch (e) {
+    main.appendChild(el("div", "banner err",
+      "Could not load review data. Run: python tools/make_review.py"));
+  }
+}
+
+window.addEventListener("hashchange", render);
+(async () => { await Auth.complete(); await render(); })();
+</script>
+</body>
+</html>
