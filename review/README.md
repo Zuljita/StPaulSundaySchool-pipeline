@@ -30,7 +30,7 @@ asked to sign text that already breaks a written standard.
 
 ## Setup
 
-Five steps, in order. Step 2 needs Google Workspace admin; the rest need
+Four steps, in order. Step 2 needs Google Workspace admin; the rest need
 Cloudflare access.
 
 **The app and the API are one deployment.** The Worker serves the review
@@ -162,55 +162,51 @@ reviewer's mail, calendar or files, and nothing should.
 Copy the **Client ID**. It is public by design; it identifies the app, it
 does not authenticate it.
 
-### 3. Generate the signing key
+### 3. Generate the key and deploy
 
-```bash
-cd /path/to/pipeline
-export STPAUL_DATA=/path/to/data-repo
-python tools/keygen.py
-```
-
-Writes `standards/approval-key.pub` into the data repository, and prints
-the private key **once**. Keep that terminal open for the next step.
-
-Commit the public key. It belongs in git: everyone verifies against it,
-so replacing it should be a visible commit someone can question.
-
-### 4. Deploy the app and the service
+`services/approval/setup.sh` does both, in the order that keeps the
+signing key out of every place it does not belong:
 
 ```bash
 cd services/approval
+npx wrangler login
+./setup.sh /path/to/data-repo
 ```
 
-Fill in `GOOGLE_CLIENT_ID` in `wrangler.toml`. The other public values
-are already set: `DATA_REPO`, `ALLOWED_ORIGIN`, `ALLOWED_HD`,
-`CHURCH_NAME`. There is no `config.js` to edit; the Worker generates it
-from these.
+It refuses to run while `GOOGLE_CLIENT_ID` is still empty, since
+deploying then would produce a service that rejects every sign-in and
+look like a broken deployment rather than a missing value. Paste the
+client ID from step 2 into `wrangler.toml` first.
 
-Then the two secrets:
+What it does:
+
+1. Generates the Ed25519 keypair. The public half is written to
+   `standards/approval-key.pub` in the data repository, for you to
+   commit. **The private half is piped straight into Cloudflare's secret
+   store**, so it is never displayed, never written to disk, and never in
+   your shell history. Nobody holds it, including anyone helping you set
+   this up.
+2. Prompts for the GitHub token. Use a fine-grained PAT with **Contents:
+   read and write on the data repository only**. Wrangler does not echo
+   it.
+3. Builds, then deploys the API and the review page together.
+
+If a public key already exists it skips key generation rather than
+replacing it, because a new key invalidates every approval signed with
+the old one and those Sundays would need re-approving.
+
+Doing it by hand instead:
 
 ```bash
-npx wrangler secret put APPROVAL_SIGNING_KEY   # paste the PEM from step 2
-npx wrangler secret put GITHUB_TOKEN           # see below
+STPAUL_DATA=/path/to/data-repo python ../../tools/keygen.py --private-to-stdout   | npx wrangler secret put APPROVAL_SIGNING_KEY
+npx wrangler secret put GITHUB_TOKEN
 npx wrangler deploy
 ```
 
-The GitHub token should be a **fine-grained personal access token**
-scoped to the data repository alone, with **Contents: read and write**
-and nothing else. It is how the service commits approvals. Give it an
-expiry and a calendar reminder.
-
-That deploys the API and the review page together. Open
-`https://schoolreview.stpaulaustin.org/` and you should get the sign-in
+Open `https://schoolreview.stpaulaustin.org/`. You should get the sign-in
 page.
 
-To check the build without deploying:
-
-```bash
-npx wrangler deploy --dry-run
-```
-
-### 5. Add the reviewers and close the gate
+### 4. Add the reviewers and close the gate
 
 In the data repository, `standards/reviewers.yml`:
 

@@ -40,6 +40,10 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--force", action="store_true",
                     help="overwrite an existing public key")
+    ap.add_argument("--private-to-stdout", action="store_true",
+                    help="write ONLY the private key to stdout, everything else "
+                         "to stderr, so it can be piped straight into a secret "
+                         "store without ever being displayed or written to disk")
     args = ap.parse_args()
 
     pub_path = STANDARDS_DIR / "approval-key.pub"
@@ -59,6 +63,15 @@ def main() -> int:
         "# which is why it belongs in git where the change is visible.\n"
         f"{public_b64}\n",
         encoding="utf-8")
+
+    if args.private_to_stdout:
+        # Commentary to stderr, key to stdout, so a pipe carries the key and
+        # nothing else. The point of the mode: the private half goes from
+        # here into the secret store without passing through a screen, a
+        # file, a clipboard or a shell history.
+        print(f"Public key written to {pub_path}. Commit it.", file=sys.stderr)
+        sys.stdout.write(private_pem)
+        return 0
 
     print(f"Public key written to {pub_path}")
     print("Commit it.\n")
