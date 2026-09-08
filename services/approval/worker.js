@@ -192,13 +192,21 @@ async function ghPut(env, path, text, sha, message) {
  * The roster, read from the data repository rather than from config, so
  * that adding an approver stays a reviewable commit.
  *
- * Deliberately a small hand parser: the roster is a flat, known shape,
- * and pulling a YAML library into a Worker to read six fields is not a
- * trade worth making.
+ * Deliberately a small hand parser: it needs a name, a role and an email
+ * per reviewer, and pulling a YAML library into a Worker for that is not
+ * a trade worth making.
+ *
+ * It reads the reviewer list and nothing else. Policy (how many
+ * approvals, which roles, whether signatures are required) is enforced
+ * by tools/verify.py at gate time, with a real YAML parser. An earlier
+ * version of this function also parsed the policy block, which looked
+ * like it worked while silently dropping `required_roles` because that
+ * value is a list and this parser only reads scalars. A half-working
+ * copy of a rule is worse than no copy: the enforcing one lives in
+ * exactly one place.
  */
 function parseRoster(yamlText) {
   const reviewers = [];
-  const policy = {};
   let section = null;
   let current = null;
 
@@ -208,18 +216,9 @@ function parseRoster(yamlText) {
 
     if (/^policy:/.test(line)) { section = "policy"; continue; }
     if (/^reviewers:/.test(line)) { section = "reviewers"; continue; }
+    if (section !== "reviewers") continue;
 
-    if (section === "policy") {
-      const m = line.match(/^\s+([a-z_]+):\s*(.+?)\s*$/i);
-      if (m) {
-        const v = m[2].replace(/^["']|["']$/g, "");
-        policy[m[1]] = v === "true" ? true : v === "false" ? false
-          : /^\d+$/.test(v) ? parseInt(v, 10) : v;
-      }
-      continue;
-    }
-
-    if (section === "reviewers") {
+    {
       const start = line.match(/^\s*-\s*([a-z_]+):\s*(.*)$/i);
       if (start) {
         current = {};
@@ -231,7 +230,7 @@ function parseRoster(yamlText) {
       if (kv && current) current[kv[1]] = kv[2].replace(/^["']|["']$/g, "").trim();
     }
   }
-  return { reviewers, policy };
+  return { reviewers };
 }
 
 // ---------------------------------------------------------------------
@@ -280,7 +279,7 @@ async function authenticate(request, env) {
 
   const rosterFile = await ghGet(env, "standards/reviewers.yml");
   if (!rosterFile) throw new Error("roster not found in the data repository");
-  const { reviewers, policy } = parseRoster(rosterFile.text);
+  const { reviewers } = parseRoster(rosterFile.text);
 
   const entry = reviewers.find(
     (r) => (r.email || "").toLowerCase() === identity.email);
@@ -290,7 +289,7 @@ async function authenticate(request, env) {
     throw new Error(
       `${identity.email} is not on the reviewer roster in standards/reviewers.yml`);
   }
-  return { identity, entry, policy };
+  return { identity, entry };
 }
 
 async function handleApprove(request, env, origin) {
