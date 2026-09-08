@@ -35,32 +35,44 @@ Cloudflare access.
 
 Two values thread through the whole thing, so fix them first:
 
-| | GitHub Pages default | With a custom domain (preferred) |
-|---|---|---|
-| **Page URL** | `https://<org>.github.io/StPaulSundaySchool-pipeline/` | `https://schoolreview.stpaulaustin.org/` |
-| **Origin** | `https://<org>.github.io` | `https://schoolreview.stpaulaustin.org` |
+| | |
+|---|---|
+| **Page URL** | `https://schoolreview.stpaulaustin.org/` |
+| **Origin** | `https://schoolreview.stpaulaustin.org` |
 
-An origin is scheme + host + port and **never a path**. For a GitHub
-project site every repository under the same account shares one origin,
-which is what both Google and the service want. Getting this wrong is the
-most common failure and it shows up as `origin_mismatch` at sign-in.
+An origin is scheme + host + port and **never a path**. Getting it wrong
+shows up as `origin_mismatch` at sign-in.
+
+> **A dedicated hostname is required here, not preferred.**
+>
+> Every GitHub project Pages site under one account shares a single
+> origin: `https://<account>.github.io`. Authorising that origin on the
+> OAuth client would let **any page under any of that account's Pages
+> projects** initialise Google sign-in with this client ID and obtain a
+> token the approval service accepts. Every unrelated demo, experiment
+> and abandoned project on that account would join the trust boundary
+> for approving doctrine.
+>
+> A hostname the review app has to itself is the isolation boundary.
+> **Do not add `<account>.github.io` to the authorised origins**, even
+> temporarily. With a custom domain configured, GitHub redirects the
+> project URL to it anyway, so the app is not served there.
+>
+> The app stores nothing in the browser and holds the ID token in memory
+> only, so there is no persisted credential for a co-resident page to
+> read. That limits the damage; it does not remove the reason above.
 
 ### A note on ownership, before you start
 
-The origin above is tied to whoever owns the repository, so moving the
-repository later means redoing part of steps 3 and 4. Two ways out, and
-the second is better:
+The custom domain is not optional, for the isolation reason in the box
+above, and it happens to settle ownership too. Pointed at
+`schoolreview.stpaulaustin.org`, the origin belongs to the church and
+does not change when the repository moves between accounts, so a later
+transfer touches no Google or Cloudflare configuration at all.
 
-**Use a custom domain.** Point Pages at something like
-`schoolreview.stpaulaustin.org` (Settings → Pages → Custom domain, plus a
-DNS record). The origin is then the church's and never changes, no
-matter who owns the repository or whether it moves between accounts. This
-is the one decision that makes every later transfer a non-event.
-
-**Or accept the rework.** It is about ten minutes: add the new origin in
-the Google console, update `ALLOWED_ORIGIN` and `DATA_REPO` in
-`wrangler.toml`, redeploy, and update `service` in `config.js` if
-Cloudflare moved too. Real, but not a reason to delay.
+This is the one decision that makes every later transfer a non-event, and
+it is the same decision that keeps unrelated projects out of the trust
+boundary. Worth doing first for either reason.
 
 **The Google project is the constraint that does not move.** For the
 consent screen to be **Internal**, the Google Cloud project has to be
@@ -127,11 +139,18 @@ Then **Create client**:
 |---|---|
 | Application type | **Web application** |
 | Name | St. Paul Sunday School Review |
-| Authorized JavaScript origins | the page's origin, e.g. `https://<org>.github.io` |
+| Authorized JavaScript origins | `https://schoolreview.stpaulaustin.org` |
 | Authorized redirect URIs | *leave empty* |
 
-Use the **Origin** from the table above. Add `http://localhost:8787` as a
-second origin for local development.
+Use the **Origin** from the table above, and nothing else. In
+particular do not add `<account>.github.io`, for the reason in the box
+above.
+
+`http://localhost:8787` can be added for local development, with the same
+caveat in miniature: any local page on that port could then obtain a
+token. It is a much smaller exposure since it needs code already running
+on the machine, but remove it from the production client once the
+deployed app works, or use a separate OAuth client for development.
 
 No redirect URI is needed: the app uses Google Identity Services, which
 hands the page an ID token directly rather than redirecting.
