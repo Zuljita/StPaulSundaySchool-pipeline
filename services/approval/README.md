@@ -54,15 +54,22 @@ npx wrangler deploy
 | `APPROVAL_SIGNING_KEY` | **Secret.** Ed25519 private key, PKCS8 PEM. |
 | `GITHUB_TOKEN` | **Secret.** Contents write on the data repository, nothing else. |
 
-## Endpoints
+## Routes
 
-All require `Authorization: Bearer <google id token>`.
+The Worker serves the review app as well as the API, so the page and the
+service share one origin. That removes CORS from the picture, leaves one
+custom domain to point, and makes it impossible for the two to disagree
+about where the other one lives.
 
 | | |
 |---|---|
-| `GET /sundays` | The index, plus who you are on the roster. |
-| `GET /sunday/:slug` | One Sunday's review bundle. |
-| `POST /approve` | Record a decision. Body: `sunday`, `decision`, `note`, `content_sha256`. |
+| `GET /` | The review app, bundled from `review/index.html`. |
+| `GET /config.js` | Generated from `wrangler.toml`, so the client ID has one home. |
+| `GET /api/sundays` | The index, plus who you are on the roster. |
+| `GET /api/sunday/:slug` | One Sunday's review bundle. |
+| `POST /api/approve` | Record a decision. Body: `sunday`, `decision`, `note`, `content_sha256`. |
+
+The three `/api` routes require `Authorization: Bearer <google id token>`.
 
 ## The one thing not to break
 

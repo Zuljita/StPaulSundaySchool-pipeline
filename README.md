@@ -105,9 +105,9 @@ touch real content.
 | `tools/stpaul/` | model, rule engine, canonical hashing, approval gate, signing |
 | `tools/stpaul/render/` | brand constants, handoff, DOCX, PDF, app export |
 | `tools/*.py` | the CLI: lint, verify, approve, build, keygen, importers, audits |
-| `tools/tests/` | 46 tests, with fixture data |
-| `review/` | the static review app |
-| `services/approval/` | Cloudflare Worker: Google sign-in, signing, commit |
+| `tools/tests/` | 54 tests, with fixture data |
+| `review/` | the review app, bundled into the Worker at deploy |
+| `services/approval/` | Cloudflare Worker: serves the app, Google sign-in, signing, commit |
 
 | Tool | |
 |---|---|
@@ -128,15 +128,19 @@ touch real content.
 
 ## Setting up approvals
 
-1. `python tools/keygen.py` — writes the public key into the data repo,
+1. Point a dedicated hostname at the Worker. A hostname of its own is the
+   isolation boundary, not a nicety: authorising a shared origin would let
+   anything else on it obtain a token this service accepts.
+2. Create a Google OAuth client, Internal user type, for that origin.
+3. `python tools/keygen.py` — writes the public key into the data repo,
    prints the private key once.
-2. Create a Google OAuth client (Internal user type) for the review
-   app's origin.
-3. Deploy `services/approval` (see its README): set the signing key, a
-   GitHub token scoped to the data repository, and the client id.
-4. Fill in `review/config.js`.
+4. Deploy `services/approval`, which serves the review app and the API
+   together. Set the signing key and a GitHub token scoped to the data
+   repository.
 5. Add reviewers to `standards/reviewers.yml` in the data repo, with
    their Google addresses, and set `require_signed_approvals: true`.
+
+Full walkthrough in `review/README.md`.
 
 Reviewers then need no GitHub account and no new account of any kind.
 Delegation is one line in `reviewers.yml`, which is a reviewable commit

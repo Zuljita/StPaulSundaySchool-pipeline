@@ -2,34 +2,55 @@ name = "stpaul-approval"
 main = "worker.js"
 compatibility_date = "2026-01-01"
 
-# The Ed25519 signing the service does needs Node-compatible crypto in the
-# Workers runtime.
+# Ed25519 signing needs Node-compatible crypto in the Workers runtime.
 compatibility_flags = ["nodejs_compat"]
+
+# The review app is bundled into the Worker as text and served from "/".
+# One origin for the page and the API means no CORS pair to keep in sync,
+# one custom domain, and no way for the two to disagree about where the
+# other one lives.
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
+
+# The hostname the app is served from. Requires the zone to be on
+# Cloudflare DNS. If stpaulaustin.org is hosted elsewhere, either move the
+# zone or drop this block and use the workers.dev subdomain, remembering
+# that the origin then changes and both ALLOWED_ORIGIN and the Google
+# authorised origin must change with it.
+[[routes]]
+pattern = "schoolreview.stpaulaustin.org"
+custom_domain = true
 
 [vars]
 # --- public values, safe in git ------------------------------------------
 
 # OAuth client ID from Google Auth Platform > Clients. Public by design:
-# it identifies the app, it does not authenticate it.
+# it identifies the app, it does not authenticate it. Lives here only, and
+# is served to the page in a generated config.js, so there is no second
+# copy to drift.
 GOOGLE_CLIENT_ID = ""
 
 # The private data repository the service reads content from and commits
 # approvals to.
 DATA_REPO = "Zuljita/StPaulSundaySchool"
 
-# Where the review app is served from. The service refuses requests from
-# any other origin, so a copy of the page hosted elsewhere cannot use this
-# endpoint against the church's repository.
-# Lowercase, always. DNS is case-insensitive and the record may read
-# SchoolReview.stpaulaustin.org, but browsers send the Origin header
-# lowercased, so a mixed-case value here would reject every request.
+# Shown in the app header.
+CHURCH_NAME = "St. Paul Lutheran Church, Austin"
+
+# The app is served from this same origin, so this is now a same-origin
+# check rather than a cross-origin allowance. Lowercase, always: DNS is
+# case-insensitive and the record may read SchoolReview.stpaulaustin.org,
+# but browsers send the Origin header lowercased.
 ALLOWED_ORIGIN = "https://schoolreview.stpaulaustin.org"
 
 # Optional. The Google Workspace domain reviewers must belong to, checked
 # against the token's `hd` claim. The roster in standards/reviewers.yml is
 # already an allowlist of specific addresses, so this is defence in depth
-# rather than the control: it means a personal gmail.com account cannot
+# rather than the control: it means an account outside the church cannot
 # reach the service at all, even to be rejected by name.
+#
 # Confirm this matches the Workspace *primary* domain, which is not always
 # the same as the website's. A wrong value rejects every reviewer, but it
 # says so by name, so the failure is loud and takes seconds to correct.

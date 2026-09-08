@@ -28,6 +28,14 @@
  * the thing being approved is decided by the repository and not by the
  * client.
  *
+
+ * ROUTES
+ *   GET  /                 the review app
+ *   GET  /config.js        generated; client id comes from wrangler.toml
+ *   GET  /api/sundays      the index
+ *   GET  /api/sunday/:slug one Sunday
+ *   POST /api/approve      record a decision
+ *
  * SECRETS (wrangler secret put ...)
  *   APPROVAL_SIGNING_KEY   Ed25519 private key, PKCS8 PEM, from tools/keygen.py
  *   GITHUB_TOKEN           write access to the data repository only
@@ -38,6 +46,12 @@
  *   ALLOWED_ORIGIN         where the review app is served from
  *   ALLOWED_HD             optional Workspace domain reviewers must be in
  */
+
+// The review app itself. Serving it from here rather than from a separate
+// static host is what keeps everything on one origin: no CORS pair to keep
+// in sync, one custom domain, one deploy, and no possibility of the page
+// and the service disagreeing about where the other one is.
+import APP_HTML from "../../review/index.html";
 
 const GOOGLE_JWKS = "https://www.googleapis.com/oauth2/v3/certs";
 const GOOGLE_ISSUERS = ["https://accounts.google.com", "accounts.google.com"];
@@ -385,15 +399,46 @@ export default {
 
     if (request.method === "OPTIONS") return json({}, 204, origin);
 
+    // The app and its configuration. config.js is generated rather than
+    // stored so the client ID exists in exactly one place, wrangler.toml,
+    // and cannot drift from what this service verifies tokens against.
+    if (request.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")) {
+      return new Response(APP_HTML, {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-cache",
+          "X-Content-Type-Options": "nosniff",
+          "Referrer-Policy": "same-origin",
+        },
+      });
+    }
+    if (request.method === "GET" && url.pathname === "/config.js") {
+      const cfg = {
+        // Relative, so the app talks to whatever host served it. Same
+        // origin by construction.
+        service: "/api",
+        googleClientId: env.GOOGLE_CLIENT_ID || "",
+        churchName: env.CHURCH_NAME || "St. Paul Lutheran Church, Austin",
+      };
+      return new Response(
+        `window.STPAUL_CONFIG = ${JSON.stringify(cfg, null, 2)};
+`, {
+          headers: {
+            "Content-Type": "application/javascript; charset=utf-8",
+            "Cache-Control": "no-cache",
+          },
+        });
+    }
+
     try {
-      if (url.pathname === "/sundays" && request.method === "GET") {
+      if (url.pathname === "/api/sundays" && request.method === "GET") {
         return await handleIndex(request, env, origin);
       }
-      const m = url.pathname.match(/^\/sunday\/([\w.-]+)$/);
+      const m = url.pathname.match(/^\/api\/sunday\/([\w.-]+)$/);
       if (m && request.method === "GET") {
         return await handleSunday(request, env, origin, m[1]);
       }
-      if (url.pathname === "/approve" && request.method === "POST") {
+      if (url.pathname === "/api/approve" && request.method === "POST") {
         return await handleApprove(request, env, origin);
       }
       return json({ error: "not found" }, 404, origin);
