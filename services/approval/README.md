@@ -39,10 +39,16 @@ It never edits curriculum text.
 `wrangler.toml` holds the public values. Two secrets are set separately
 and never appear in git:
 
+Use `setup.ps1` (PowerShell) or `setup.sh` (bash) rather than doing this
+by hand. They hand the signing key to Cloudflare without it touching a
+screen, a file, or a shell history.
+
+```powershell
+.\setup.ps1 D:\dev\StPaulSundaySchool
+```
+
 ```bash
-npx wrangler secret put APPROVAL_SIGNING_KEY   # PEM from tools/keygen.py
-npx wrangler secret put GITHUB_TOKEN           # write to DATA_REPO only
-npx wrangler deploy
+./setup.sh /path/to/data-repo
 ```
 
 | Variable | |

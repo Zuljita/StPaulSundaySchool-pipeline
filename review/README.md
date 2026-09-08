@@ -167,6 +167,16 @@ does not authenticate it.
 `services/approval/setup.sh` does both, in the order that keeps the
 signing key out of every place it does not belong:
 
+**PowerShell**
+
+```powershell
+Set-Location D:\dev\StPaulSundaySchool-pipeline\services\approval
+npx wrangler login
+.\setup.ps1 D:\dev\StPaulSundaySchool
+```
+
+**bash**
+
 ```bash
 cd services/approval
 npx wrangler login
@@ -197,8 +207,24 @@ the old one and those Sundays would need re-approving.
 
 Doing it by hand instead:
 
+**PowerShell.** Capture into a variable rather than piping straight from
+python: PowerShell's native pipe can rewrite line endings. The key is in
+memory only, never on disk.
+
+```powershell
+$env:STPAUL_DATA = "D:\dev\StPaulSundaySchool"
+$pem = (& python ..\..\tools\keygen.py --private-to-stdout) -join "`n"
+$pem | npx wrangler secret put APPROVAL_SIGNING_KEY
+Remove-Variable pem
+npx wrangler secret put GITHUB_TOKEN
+npx wrangler deploy
+```
+
+**bash**
+
 ```bash
-STPAUL_DATA=/path/to/data-repo python ../../tools/keygen.py --private-to-stdout   | npx wrangler secret put APPROVAL_SIGNING_KEY
+STPAUL_DATA=/path/to/data-repo python ../../tools/keygen.py --private-to-stdout \
+  | npx wrangler secret put APPROVAL_SIGNING_KEY
 npx wrangler secret put GITHUB_TOKEN
 npx wrangler deploy
 ```
@@ -254,8 +280,9 @@ something is wrong and nothing else matters.
 
 Against the real service, with live reload:
 
-```bash
-cd services/approval && npx wrangler dev
+```powershell
+Set-Location D:\dev\StPaulSundaySchool-pipeline\services\approval
+npx wrangler dev
 ```
 
 Or entirely offline. `review/config.js` is only used this way, since the
@@ -263,15 +290,15 @@ deployed app gets a generated one; with `service` empty the page reads
 `review/data/*.json` from disk and is read-only, which is enough for
 reading a proof:
 
-```bash
-python tools/make_review.py
+```powershell
+python tools\make_review.py
 python -m http.server 8787 --directory review
 ```
 
 Approvals then go through the CLI, which records them unsigned:
 
-```bash
-python tools/approve.py 2026-09-27-trinity-17 \
+```powershell
+python tools\approve.py 2026-09-27-trinity-17 `
     --reviewer "Bryan Wolfmueller" --role pastor --note "reviewed 9/25"
 ```
 

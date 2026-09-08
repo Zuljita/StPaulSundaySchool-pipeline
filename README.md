@@ -78,9 +78,10 @@ not resolved, because picking a side is a doctrinal decision.
 
 ## Quick start
 
-```bash
+```powershell
 pip install pyyaml python-docx reportlab pypdf cryptography
-export STPAUL_DATA=/path/to/the/data/repo
+$env:STPAUL_DATA = "D:\dev\StPaulSundaySchool"    # PowerShell
+# export STPAUL_DATA=/path/to/data-repo           # bash
 ```
 
 ```bash

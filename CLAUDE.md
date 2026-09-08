@@ -70,10 +70,16 @@ Picking a side is a doctrinal decision and it belongs to the pastor.
 
 ## Commands
 
-```bash
-export STPAUL_DATA=/path/to/data/repo
-python -m unittest discover -s tools/tests   # no data repo needed
-python tools/lint.py --baseline
-python tools/verify.py
-python tools/build.py <sunday>
+This project is developed on Windows. Prefer PowerShell forms in anything
+you hand a person to run: `$env:STPAUL_DATA = "D:\path"` rather than
+`export`, backslash paths rather than `/d/dev/...`, and a backtick rather
+than a backslash for line continuation. `/d/dev/x` in PowerShell resolves
+to `D:\d\dev\x` and fails confusingly.
+
+```powershell
+$env:STPAUL_DATA = "D:\dev\StPaulSundaySchool"
+python -m unittest discover -s tools\tests   # no data repo needed
+python tools\lint.py --baseline
+python tools\verify.py
+python tools\build.py <sunday>
 ```
