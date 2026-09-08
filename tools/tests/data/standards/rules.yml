@@ -417,6 +417,39 @@ hymn_copyright:
     Trinity 16's pieces show the correct form.
 
 # ---------------------------------------------------------------------
+# The Apostolic Benediction.
+#
+# Core Standards §2 said "printed in full, every piece except the Family
+# Take-Home". Piece Specifications §5c said "referenced by name only, not
+# reprinted". Neither happened: it appeared on none of the twelve Trinity
+# 16 pieces.
+#
+# Settled by Pastor Wolfmueller, Sept 7 2026: "The Apostolic Benediction
+# should be printed on the teacher's handout and the student handout on
+# every lesson in the closing." So it is printed rather than named, and
+# it belongs on the pieces a class actually uses in the room.
+#
+# The Pre-K craft page is that level's student piece, so it is included.
+# Nursery Notes are not: Nursery has no lesson, and the instruction says
+# "on every lesson".
+# ---------------------------------------------------------------------
+benediction:
+  severity: error
+  source: "Pastor Wolfmueller, Sept 7 2026, resolving Core-Standards.md §2 against 06-Piece-Specifications.md §5c"
+  applies_to: [teacher_guide, student_handout, craft_page]
+  reference: "2 Corinthians 13:14"
+  text: >-
+    The grace of our Lord Jesus Christ, the love of God, and the
+    communion of the Holy Spirit be with you all.
+  # Enough of the text to tell "printed in full" from "named only".
+  printed_marker: "communion of the Holy Spirit be with you all"
+  message: >-
+    The Apostolic Benediction must be printed in full in the closing of
+    every Teacher's Guide and every student piece. Naming it is no longer
+    sufficient; that was the older Piece Specifications 5c rule and it has
+    been superseded.
+
+# ---------------------------------------------------------------------
 # Level labels are printed text. Core-Standards.md §3 states they appear
 # verbatim in the chip at the head of every piece and are "nowhere
 # varied".
@@ -424,11 +457,19 @@ hymn_copyright:
 level_labels:
   severity: error
   source: "Core-Standards.md §3 The Six Levels"
+  # Set by Pastor Wolfmueller, Sept 7 2026, answering the review of PR #1:
+  # elementary levels carry their grades in parentheses, and "the grade
+  # levels are not necessary for middle school and high school".
+  #
+  # This reverses the Core Standards revision of the same morning, which
+  # had retired the parenthetical form and added grade bands to the two
+  # upper levels. His answer to the review is the later decision and the
+  # one recorded here.
   canonical:
     nursery: "Nursery"
     pre_k: "Pre-K / K"
-    primary: "Primary 1–2"
-    intermediate: "Intermediate 3–5"
+    primary: "Primary (1–2)"
+    intermediate: "Intermediate (3–5)"
     middle_school: "Middle School"
     high_school: "High School"
   message: >-
@@ -459,6 +500,8 @@ required_sections:
   severity: error
   source: "06-Piece-Specifications.md §6, §7, §8, §9"
 
+  # Carried by every Teacher's Guide, whatever the level. The rungs come
+  # on top of these, cumulatively; see teacher_guide_ladder below.
   teacher_guide:
     - "What You Need"
     - "The Text"
@@ -497,6 +540,41 @@ required_sections:
     - "Say This · Sing This"
     - "Closing Prayer"
     - "Credits"
+
+# ---------------------------------------------------------------------
+# The ladder, applied to the Teacher's Guide.
+#
+# Settled by Pastor Wolfmueller, Sept 7 2026: "The teacher's guides
+# should get more complex at each level. The teacher's guide for pre-K
+# should [be] really what the text says, the next level: what it says and
+# what it means, Intermediate should talk about what it says, what it
+# means, what it demands, and what it gives, and so on."
+#
+# So a Teacher's Guide carries a section for its own rung and every rung
+# beneath it, on top of the standing sections above. This settles the
+# contradiction between 06-Piece-Specifications 6, which gave one fixed
+# skeleton to all five levels, and 09-What-Happens-at-Each-Level, which
+# said "Pre-K has one. High School has five."
+#
+# The headings below are the rung questions verbatim from Core Standards
+# 3. What actually prints at the head of each section is an editorial
+# choice and is Pastor Wolfmueller's to make; change them here when he
+# does, since these are the strings the linter looks for.
+# ---------------------------------------------------------------------
+teacher_guide_ladder:
+  severity: error
+  source: "Core-Standards.md §3 The Ladder; Pastor Wolfmueller, Sept 7 2026"
+  order: [pre_k, primary, intermediate, middle_school, high_school]
+  rungs:
+    pre_k: "What does the text say?"
+    primary: "What does this mean?"
+    intermediate: "What does it demand, and what does it give?"
+    middle_school: "What does this text claim, and how does the Lord answer those who deny it?"
+    high_school: "Who denies this, and how is it confessed to them?"
+  message: >-
+    The ladder is cumulative. A Teacher's Guide carries a section for its
+    own rung and every rung beneath it, so Pre-K has one and High School
+    has five.
 
 # High School has documented deviations from the Teacher's Guide
 # skeleton. 06-Piece-Specifications §6 item 10 and the Base44 export
@@ -542,94 +620,18 @@ manifest:
 # Resolve one by deciding, editing the losing document, and deleting the
 # entry here.
 # ---------------------------------------------------------------------
-open_conflicts:
 
-  - id: apostolic-benediction-printed
-    severity: warning
-    question: "Is the Apostolic Benediction printed in full, or referenced by name?"
-    positions:
-      - source: "Core-Standards.md §2"
-        says: >-
-          "Apostolic Benediction (2 Corinthians 13:14), printed in full,
-          last in the Closing. Every piece except the Family Take-Home."
-      - source: "06-Piece-Specifications.md §5c"
-        says: >-
-          "treated the same way as the Lord's Prayer: referenced by name
-          only, not reprinted every week, since the text is fixed."
-    observed: >-
-      Neither is satisfied in practice. The Apostolic Benediction does
-      not appear at all in any of the twelve Trinity 16 pieces.
-
-  - id: level-questions
-    severity: warning
-    question: "Which set of per-level questions governs, Core Standards §3 or the Levels document?"
-    positions:
-      - source: "Core-Standards.md §3"
-        says: >-
-          Pre-K "What happened?"; Primary "What happened, and what does
-          this mean?"; Intermediate "Where is the Law here, and where is
-          the Gospel?"; Middle School "Is this true? What does it demand
-          of me, and what does it give to me?"; High School "How do I
-          confess this in a world that denies it?". States that the Level
-          Question is a fixed constant.
-      - source: "09-What-Happens-at-Each-Level.md, The Five Questions"
-        says: >-
-          Pre-K "What does the text say?"; Primary "What does this
-          mean?"; Intermediate "What does it demand, and what does it
-          give?"; Middle School "What does this text claim, and how does
-          the Lord answer those who deny it?"; High School "Who denies
-          this, and how is it confessed to them?". States the questions
-          are cumulative: each level asks its own and every one beneath it.
-    note: >-
-      Not a wording variation. The Middle School question in particular
-      changes who adjudicates: "Is this true?" puts the verdict with the
-      room, while "how does the Lord answer those who deny it?" puts it
-      with the Lord. That is the same correction the retracted "rule of
-      the room" needed, so the newer document reads as deliberate. It
-      still has to be decided rather than assumed, because both documents
-      claim to state the fixed constant.
-
-  - id: teacher-guide-structure
-    severity: warning
-    question: "Is the Teacher's Guide one fixed skeleton, or does its length vary by level?"
-    positions:
-      - source: "06-Piece-Specifications.md §6"
-        says: >-
-          A fixed ten-item structure applying to all five instructional
-          levels, from "What You Need" through "Discussion Guardrails".
-      - source: "09-What-Happens-at-Each-Level.md, The Five Questions"
-        says: >-
-          "Your Teacher's Guide carries a section for each question your
-          level asks. Pre-K has one. High School has five."
-    note: >-
-      These are different documents, not different wordings of one. If
-      the Levels document governs, required_sections above has to become
-      cumulative by level and the renderers change with it. Nothing has
-      been changed on the strength of the new document alone.
-
-  - id: theme-line-effective-date
-    severity: warning
-    question: "Is the Theme Line effective Trinity 16 or Trinity 17?"
-    positions:
-      - source: "Core-Standards.md §4"
-        says: "Effective Trinity 16 forward."
-      - source: "06-Piece-Specifications.md §3"
-        says: "Effective Trinity 17 forward; not applied to Rally Day or Trinity 16."
-
-  - id: level-label-form
-    severity: warning
-    question: "Is it \"Primary 1–2\" or \"Primary (1–2)\"?"
-    positions:
-      - source: "Core-Standards.md §3"
-        says: >-
-          "Primary 1–2" — and explicitly retires the parenthetical
-          form, which "no longer matches what prints."
-      - source: "06-Piece-Specifications.md §1"
-        says: >-
-          "Primary (1–2) and Intermediate (3–5) are the standard labels
-          going forward, always with the grade range attached."
-    note: >-
-      Core-Standards is the later revision (Sept 6 vs Sept 4) and states
-      it supersedes, so level_labels above follows it. Piece
-      Specifications §1 should be updated to match, or Core Standards
-      corrected, so that only one of them is the rule.
+# ---------------------------------------------------------------------
+# UNRESOLVED GOVERNANCE CONFLICTS
+#
+# Empty. All five were answered by Pastor Wolfmueller on Sept 7 2026: two
+# by the Core Standards revision that morning, three by his review of
+# PR #1 that evening.
+#
+# When two standards documents disagree again, record it here rather than
+# picking a side. The linter reports these against every Sunday, which is
+# what stops a contradiction sitting unnoticed the way the Apostolic
+# Benediction did, printed on none of twelve pieces while two documents
+# gave opposite instructions about it.
+# ---------------------------------------------------------------------
+open_conflicts: []

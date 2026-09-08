@@ -24,7 +24,8 @@ FIXTURE_STANDARDS = Path(__file__).resolve().parent / "data" / "standards"
 
 from stpaul import approval, hashing
 from stpaul.model import load_lesson, load_rules
-from stpaul.rules import (ERROR, check_hymn_copyright, check_lesson,
+from stpaul.rules import (ERROR, check_benediction, check_hymn_copyright,
+                          check_lesson, check_teacher_guide_ladder,
                           summarize)
 
 LESSON_YML = """\
@@ -315,8 +316,40 @@ class RuleTestCase(unittest.TestCase):
             "Gospel Lesson.\n", "No credit line.\n")
         self.assertIn("missing-attribution", self.rules_hit(body))
 
-    def test_open_conflicts_are_always_reported(self):
-        self.assertIn("open-conflict", self.rules_hit(PIECE))
+    def test_open_conflicts_are_reported_against_every_sunday(self):
+        """A recorded contradiction is surfaced, not left sitting quietly.
+
+        Tested against a synthetic conflict rather than the live list,
+        which is empty now that Pastor Wolfmueller has answered all five.
+        The mechanism has to keep working for the next disagreement, and
+        a test that passes only while the list happens to be non-empty
+        would go green for the wrong reason.
+        """
+        rules = dict(self.rules)
+        rules["open_conflicts"] = [{
+            "id": "synthetic",
+            "severity": "warning",
+            "question": "Does the mechanism still report?",
+            "positions": [
+                {"source": "A.md §1", "says": "one thing"},
+                {"source": "B.md §2", "says": "the opposite"},
+            ],
+        }]
+        self.piece_path.write_text(PIECE, encoding="utf-8")
+        lesson = load_lesson(SLUG, content_dir=self.content)
+        hits = [f for f in check_lesson(rules, lesson)
+                if f.rule.startswith("open-conflict")]
+        self.assertEqual(len(hits), 1)
+        self.assertIn("A.md §1", hits[0].message)
+        self.assertIn("B.md §2", hits[0].message)
+
+    def test_no_conflicts_are_currently_recorded(self):
+        """All five were answered on Sept 7 2026. This is a tripwire.
+
+        If a conflict reappears in rules.yml this fails, which is the
+        prompt to get it decided rather than let it accumulate.
+        """
+        self.assertEqual(self.rules.get("open_conflicts"), [])
 
     def test_scripture_quotation_requires_a_copyright_notice(self):
         """No translation in use is public domain; both publishers require one."""
@@ -384,7 +417,114 @@ class RuleTestCase(unittest.TestCase):
         self.assertEqual(offending, [])
 
 
+class BenedictionTestCase(unittest.TestCase):
+    """Printed, not named.
+
+    Two documents disagreed about this for weeks, one saying printed in
+    full and the other referenced by name, and the outcome was that it
+    appeared on none of the twelve Trinity 16 pieces. Naming it is
+    specifically not enough now, so the check looks for the text.
+    """
+
+    FULL = ("Close with the Apostolic Benediction: \"The grace of our Lord "
+            "Jesus Christ, the love of God, and the communion of the Holy "
+            "Spirit be with you all.\" (2 Corinthians 13:14)")
+    NAMED_ONLY = "Close with the Apostolic Benediction."
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="stpaul-ben-"))
+        self.content = self.tmp / "content"
+        (self.content / SLUG / "pieces").mkdir(parents=True)
+        (self.content / SLUG / "lesson.yml").write_text(LESSON_YML, encoding="utf-8")
+        self.piece = self.content / SLUG / "pieces" / "05-primary-teacher-guide.md"
+        self.rules = load_rules(FIXTURE_STANDARDS)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def guide(self, closing: str) -> str:
+        return ("---\npiece: primary-teacher-guide\ntype: teacher_guide\n"
+                "level: primary\norder: 5\n---\n\n# Primary (1-2)\n\n"
+                "## Closing Prayer\n\n" + closing + "\n")
+
+    def hits(self, closing: str) -> list:
+        self.piece.write_text(self.guide(closing), encoding="utf-8")
+        lesson = load_lesson(SLUG, content_dir=self.content)
+        return [f for f in check_benediction(self.rules, lesson)]
+
+    def test_printed_in_full_passes(self):
+        self.assertEqual(self.hits(self.FULL), [])
+
+    def test_named_only_is_an_error(self):
+        hits = self.hits(self.NAMED_ONLY)
+        self.assertEqual(len(hits), 1)
+        self.assertIn("does not print it", hits[0].message)
+
+    def test_absent_entirely_is_an_error(self):
+        hits = self.hits("Say a closing prayer.")
+        self.assertEqual(len(hits), 1)
+        self.assertIn("missing", hits[0].message)
+
+
+class LadderTestCase(unittest.TestCase):
+    """Pre-K has one rung. High School has five.
+
+    Settled Sept 7 2026: the Teacher's Guides get more complex by level
+    rather than all carrying one fixed skeleton.
+    """
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="stpaul-ladder-"))
+        self.content = self.tmp / "content"
+        (self.content / SLUG / "pieces").mkdir(parents=True)
+        (self.content / SLUG / "lesson.yml").write_text(LESSON_YML, encoding="utf-8")
+        self.rules = load_rules(FIXTURE_STANDARDS)
+        self.rungs = self.rules["teacher_guide_ladder"]["rungs"]
+        self.order = self.rules["teacher_guide_ladder"]["order"]
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def write(self, level, sections):
+        order = self.order.index(level) + 3
+        body = [f"---\npiece: {level}-teacher-guide\ntype: teacher_guide\n"
+                f"level: {level}\norder: {order}\n---\n\n# Guide\n"]
+        for sec in sections:
+            body.append(f"\n## {sec}\n\nSomething.\n")
+        (self.content / SLUG / "pieces" / f"{order:02d}-g.md").write_text(
+            "".join(body), encoding="utf-8")
+
+    def hits(self):
+        lesson = load_lesson(SLUG, content_dir=self.content)
+        return check_teacher_guide_ladder(self.rules, lesson)
+
+    def rungs_up_to(self, level):
+        return [self.rungs[lv] for lv in self.order[: self.order.index(level) + 1]]
+
+    def test_prek_needs_one_rung(self):
+        self.write("pre_k", self.rungs_up_to("pre_k"))
+        self.assertEqual(self.hits(), [])
+
+    def test_high_school_needs_all_five(self):
+        self.write("high_school", self.rungs_up_to("high_school"))
+        self.assertEqual(self.hits(), [])
+
+    def test_high_school_with_only_its_own_rung_is_an_error(self):
+        """The ladder is cumulative; the top rung alone is not enough."""
+        self.write("high_school", [self.rungs["high_school"]])
+        hits = self.hits()
+        self.assertEqual(len(hits), 1)
+        self.assertIn("missing 4", hits[0].message)
+
+    def test_intermediate_needs_three(self):
+        self.write("intermediate", self.rungs_up_to("intermediate"))
+        self.assertEqual(self.hits(), [])
+        self.write("intermediate", self.rungs_up_to("primary"))
+        self.assertEqual(len(self.hits()), 1)
+
+
 if __name__ == "__main__":
+
     unittest.main(verbosity=2)
 
 class HymnCopyrightTestCase(unittest.TestCase):

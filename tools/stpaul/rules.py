@@ -428,6 +428,74 @@ def check_hymn_copyright(rules: dict, lesson: Lesson) -> list[Finding]:
     return out
 
 
+def check_benediction(rules: dict, lesson: Lesson) -> list[Finding]:
+    """Is the Apostolic Benediction printed, on the pieces that need it?
+
+    Two standards documents disagreed about this for weeks, one saying
+    printed in full and the other saying named only, and the result was
+    that it appeared on none of the twelve Trinity 16 pieces. Pastor
+    Wolfmueller settled it on Sept 7 2026: printed, in the closing, on the
+    Teacher's Guide and the student piece of every lesson.
+
+    Naming it is specifically not enough, so the check looks for the text
+    rather than the title.
+    """
+    spec = rules.get("benediction") or {}
+    if not spec:
+        return []
+    marker = (spec.get("printed_marker") or "").lower()
+    applies = set(spec.get("applies_to") or [])
+    out = []
+    for piece in lesson.pieces:
+        if piece.type not in applies:
+            continue
+        body = piece.body.lower()
+        if marker and marker in body:
+            continue
+        named = "apostolic benediction" in body
+        out.append(Finding(
+            severity=spec.get("severity", ERROR), rule="benediction",
+            message=("Names the Apostolic Benediction but does not print it. "
+                     if named else
+                     "The Apostolic Benediction is missing from the closing. ")
+                    + spec.get("message", ""),
+            source=spec.get("source", ""), piece=piece.path.name,
+        ))
+    return out
+
+
+def check_teacher_guide_ladder(rules: dict, lesson: Lesson) -> list[Finding]:
+    """Each Teacher's Guide carries its own rung and every rung beneath it.
+
+    Pre-K has one, High School has five. This is what makes the guides
+    grow in complexity by level rather than all carrying one fixed
+    skeleton.
+    """
+    spec = rules.get("teacher_guide_ladder") or {}
+    if not spec:
+        return []
+    order = spec.get("order") or []
+    rungs = spec.get("rungs") or {}
+    out = []
+    for piece in lesson.pieces:
+        if piece.type != "teacher_guide" or piece.level not in order:
+            continue
+        # Its own rung, and everything below it on the ladder.
+        wanted = [rungs[lv] for lv in order[: order.index(piece.level) + 1]
+                  if lv in rungs]
+        missing = [w for w in wanted if not piece.has_section(w)]
+        if missing:
+            out.append(Finding(
+                severity=spec.get("severity", ERROR), rule="ladder-rung",
+                message=f"{piece.level.replace('_', ' ')} asks "
+                        f"{len(wanted)} rung(s) and is missing "
+                        f"{len(missing)}: " + "; ".join(f'"{m}"' for m in missing)
+                        + ". " + spec.get("message", ""),
+                source=spec.get("source", ""), piece=piece.path.name,
+            ))
+    return out
+
+
 def check_open_conflicts(rules: dict, lesson: Lesson) -> list[Finding]:
     """Surface unresolved contradictions between the standards documents.
 
@@ -464,6 +532,8 @@ CHECKS = [
     check_translation_consistency,
     check_scripture_copyright,
     check_hymn_copyright,
+    check_benediction,
+    check_teacher_guide_ladder,
     check_level_labels,
     check_open_conflicts,
 ]
