@@ -30,7 +30,7 @@ custom_domain = true
 # it identifies the app, it does not authenticate it. Lives here only, and
 # is served to the page in a generated config.js, so there is no second
 # copy to drift.
-GOOGLE_CLIENT_ID = ""
+GOOGLE_CLIENT_ID = "345460595880-i89cpopfcv00luj3rkrh5ifrqo4a55vi.apps.googleusercontent.com"
 
 # The private data repository the service reads content from and commits
 # approvals to.

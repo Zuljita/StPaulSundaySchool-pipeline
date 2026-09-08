@@ -114,6 +114,7 @@ touch real content.
 |---|---|
 | `lint.py` | Content vs `rules.yml`. `--baseline` fails only on new violations. |
 | `verify.py` | Does content still match its signed approval? |
+| `history.py` | Who approved what, when, and whether it still applies. |
 | `approve.py` | Record a review locally. Unsigned; for development. |
 | `build.py` | Render handoff, DOCX, PDF and app export. Refuses unapproved. |
 | `keygen.py` | Generate the Ed25519 approval keypair. |
