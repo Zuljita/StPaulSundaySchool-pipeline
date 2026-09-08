@@ -52,13 +52,33 @@ echo
 # --- 1. Signing key ------------------------------------------------------
 
 PUB="$DATA_ROOT/standards/approval-key.pub"
-if [[ -f "$PUB" ]]; then
-  echo "A public key already exists at:"
-  echo "  $PUB"
-  echo
-  echo "Replacing it invalidates every approval already signed with the old"
-  echo "key, and those Sundays would need re-approving. Skipping key setup."
-  echo "To replace it deliberately, delete that file and re-run."
+if [[ -f "$PUB" && "${KEEP_EXISTING_KEY:-}" == "1" ]]; then
+  echo "Keeping the existing public key; assuming APPROVAL_SIGNING_KEY is set."
+elif [[ -f "$PUB" ]]; then
+  # Stop rather than skip. A committed public key does not prove the
+  # matching secret is set in Cloudflare: the file can arrive from a stray
+  # test run, a half-finished setup, or someone else's checkout. Skipping
+  # in that state deploys a service that cannot sign, reports success, and
+  # then fails to verify every approval. A bad thing to learn from a pastor.
+  cat >&2 <<MSG
+A public key already exists at:
+  $PUB
+
+That does not prove the matching private key is set in Cloudflare, so
+this script will not guess. Two cases:
+
+  The key is live, and APPROVAL_SIGNING_KEY is already set.
+    Confirm with:  npx wrangler secret list
+    Then re-run as: KEEP_EXISTING_KEY=1 ./setup.sh "$DATA_ROOT"
+
+  The key is stale, from a test run or an abandoned setup.
+    Delete it and re-run. A new pair will be generated:
+      rm "$PUB"
+
+Replacing a genuinely live key invalidates every approval signed with it,
+so check before deleting.
+MSG
+  exit 1
 else
   echo "Generating the signing key and piping it straight to Cloudflare."
   echo "It is not displayed and not written to disk."
