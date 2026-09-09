@@ -47,7 +47,7 @@ content/<sunday>/          source of truth, in the data repo
      |
      |  tools/lint.py          rules as data, not as prose
      |  review/ + services/    a pastor reads and approves
-     |  Ed25519 signature      bound to the exact bytes reviewed
+     |  SHA-256 content hash   bound to the exact bytes reviewed
      v
 ===== FREEZE LINE =====    approvals/<sunday>.approval.json
      |
@@ -57,14 +57,16 @@ dist/<sunday>/   handoff .md · 12 .docx · 12 .pdf · app export
                  every output stamped with the same source_sha256
 ```
 
-**The gate.** An approval is a statement about *specific bytes*, signed
-by a verified reviewer. Change one comma and the recomputed hash no
-longer matches, every review attached to the old text stops counting, and
-`build.py` refuses. Nobody has to remember to re-check.
+**The gate.** An approval is a statement about *specific bytes*, recorded
+against a verified Google identity from the roster. Change one comma and
+the recomputed hash no longer matches, every review attached to the old
+text stops counting, and `build.py` refuses. Nobody has to remember to
+re-check.
 
-**Signatures.** The signing key lives only in the approval service, so
-write access to the data repository is not enough to approve doctrine.
-A missing public key fails closed.
+**Identity.** The approval service verifies a Google ID token against
+Google's key set and checks the address against
+`standards/reviewers.yml`, so an approval names an account that actually
+authenticated rather than a name someone typed.
 
 **Sync.** Handouts and app export are produced in one run from one parse
 of one approved input. "Are they in sync?" is a string comparison.
@@ -79,7 +81,7 @@ not resolved, because picking a side is a doctrinal decision.
 ## Quick start
 
 ```powershell
-pip install pyyaml python-docx reportlab pypdf cryptography
+pip install pyyaml python-docx reportlab pypdf
 $env:STPAUL_DATA = "D:\dev\StPaulSundaySchool"    # PowerShell
 # export STPAUL_DATA=/path/to/data-repo           # bash
 ```
@@ -103,21 +105,20 @@ touch real content.
 
 | Path | |
 |---|---|
-| `tools/stpaul/` | model, rule engine, canonical hashing, approval gate, signing |
+| `tools/stpaul/` | model, rule engine, canonical hashing, approval gate |
 | `tools/stpaul/render/` | brand constants, handoff, DOCX, PDF, app export |
-| `tools/*.py` | the CLI: lint, verify, approve, build, keygen, importers, audits |
-| `tools/tests/` | 54 tests, with fixture data |
+| `tools/*.py` | the CLI: lint, verify, approve, build, importers, audits |
+| `tools/tests/` | 57 tests, with fixture data |
 | `review/` | the review app, bundled into the Worker at deploy |
-| `services/approval/` | Cloudflare Worker: serves the app, Google sign-in, signing, commit |
+| `services/approval/` | Cloudflare Worker: serves the app, Google sign-in, commit |
 
 | Tool | |
 |---|---|
 | `lint.py` | Content vs `rules.yml`. `--baseline` fails only on new violations. |
-| `verify.py` | Does content still match its signed approval? |
+| `verify.py` | Does content still match its approval? |
 | `history.py` | Who approved what, when, and whether it still applies. |
 | `approve.py` | Record a review locally. Unsigned; for development. |
 | `build.py` | Render handoff, DOCX, PDF and app export. Refuses unapproved. |
-| `keygen.py` | Generate the Ed25519 approval keypair. |
 | `make_review.py` | Build the data the review app and the service read. |
 | `import_legacy.py` | Lift produced DOCX into content. Copies, never rewrites. |
 | `import_app.py` | Recover content from a Base44 app export. |
@@ -134,13 +135,10 @@ touch real content.
    isolation boundary, not a nicety: authorising a shared origin would let
    anything else on it obtain a token this service accepts.
 2. Create a Google OAuth client, Internal user type, for that origin.
-3. `python tools/keygen.py` — writes the public key into the data repo,
-   prints the private key once.
-4. Deploy `services/approval`, which serves the review app and the API
-   together. Set the signing key and a GitHub token scoped to the data
-   repository.
-5. Add reviewers to `standards/reviewers.yml` in the data repo, with
-   their Google addresses, and set `require_signed_approvals: true`.
+3. Deploy `services/approval`, which serves the review app and the API
+   together. Set a GitHub token scoped to the data repository.
+4. Add reviewers to `standards/reviewers.yml` in the data repo, with
+   their Google addresses. That roster decides who may approve.
 
 Full walkthrough in `review/README.md`.
 

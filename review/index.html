@@ -498,10 +498,11 @@ function approvalBar(d) {
 }
 
 // The decision goes to the approval service, which verifies the Google
-// token, checks the roster, signs the review with a key this page never
-// sees, and commits it to the private data repository. The page cannot
-// forge an approval even if someone edits the JavaScript, because it has
-// nothing to sign with.
+// token against Google's key set, checks the address against the roster,
+// and commits the record to the private data repository. This page holds
+// no credential that would let it write there itself: editing the
+// JavaScript changes what is asked for, not who the service believes is
+// asking.
 async function submit(d, decision, note, ...buttons) {
   buttons.forEach((b) => (b.disabled = true));
   try {

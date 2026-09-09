@@ -24,7 +24,7 @@ jobs:
           node-version: "20"
 
       - name: Install
-        run: pip install --quiet pyyaml python-docx reportlab pypdf cryptography
+        run: pip install --quiet pyyaml python-docx reportlab pypdf
 
       - name: Tests
         env:
