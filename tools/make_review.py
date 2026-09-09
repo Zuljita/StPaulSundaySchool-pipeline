@@ -34,10 +34,32 @@ from stpaul.model import CONTENT_DIR, DATA_ROOT, all_sundays, load_lesson, load_
 from stpaul.render.handoff import piece_heading
 from stpaul.rules import check_lesson, summarize
 
+# The baseline comparison is imported from lint.py rather than restated.
+# Two copies of a rule is how one of them quietly becomes the wrong one.
+from lint import load_baseline, rule_counts
+
 # Generated from content, so it belongs with the data, not with the
 # pipeline. The approval service reads it from the data repository to
 # decide what a reviewer is actually approving.
 REVIEW_DATA = DATA_ROOT / "review" / "data"
+
+
+def beyond_baseline(slug: str, findings) -> int:
+    """Error-severity violations introduced since the baseline.
+
+    `errors` counts everything the linter finds, the debt that arrived
+    with the archive import included. That number is worth showing a
+    reviewer, but it is the wrong one to block approval on: it does not
+    reach zero, so no imported Sunday could ever be approved, and a gate
+    nothing can pass protects nothing.
+
+    This is the number `lint.py --baseline` fails on, counted the same
+    way and per rule family, so fixing one violation while introducing a
+    different one does not net out to zero.
+    """
+    known = load_baseline().get(slug, {})
+    return sum(max(0, n - known.get(rule, 0))
+               for rule, n in rule_counts(findings).items())
 
 
 def build(slug: str) -> dict:
@@ -45,6 +67,7 @@ def build(slug: str) -> dict:
     digest, manifest = content_hash(CONTENT_DIR / slug)
     findings = check_lesson(load_rules(), lesson)
     errors, warnings = summarize(findings)
+    new_errors = beyond_baseline(slug, findings)
     v = verify(slug)
     record = load_approval(slug) or {}
 
@@ -66,7 +89,8 @@ def build(slug: str) -> dict:
             "reviews": record.get("reviews", []),
             "policy": record.get("policy", {}),
         },
-        "lint": {"errors": errors, "warnings": warnings, "by_piece": by_piece},
+        "lint": {"errors": errors, "new_errors": new_errors,
+                 "warnings": warnings, "by_piece": by_piece},
         "pieces": [
             {
                 "id": p.id,
@@ -108,11 +132,14 @@ def main() -> int:
             "content_sha256": data["content_sha256"],
             "approval_state": data["approval"]["state"],
             "errors": data["lint"]["errors"],
+            "new_errors": data["lint"]["new_errors"],
             "warnings": data["lint"]["warnings"],
             "pieces": len(data["pieces"]),
         })
         print(f"  {slug}  {len(data['pieces'])} pieces, "
-              f"{data['lint']['errors']} error(s), {data['lint']['warnings']} warning(s), "
+              f"{data['lint']['errors']} error(s) "
+              f"({data['lint']['new_errors']} since baseline), "
+              f"{data['lint']['warnings']} warning(s), "
               f"{data['approval']['state']}")
 
     index.sort(key=lambda r: str(r["date"]), reverse=True)

@@ -26,8 +26,16 @@ private data repository.
   the content itself, so what is being approved is decided by the
   repository. If the reviewer's page has gone stale it returns 409 rather
   than signing something they were not looking at.
-- **An approval over content that still fails the linter.** Nobody should
-  be asked to sign text that already breaks a written standard.
+- **An approval over content that breaks a rule it did not break
+  before.** Judged against `standards/lint-baseline.json`, the same line
+  `lint.py --baseline` draws, and not against the raw count. The Sundays
+  imported from the archive carry violations that were already in print,
+  several of them the pastor's to rule on rather than anyone's to fix, so
+  blocking on the raw count refused all three live Sundays at 98, 109 and
+  212 violations and the gate could not be passed at all. What is new is
+  still refused. A review bundle written before `new_errors` existed
+  cannot tell new from known, and is refused outright rather than
+  guessed at.
 - **Any origin but `ALLOWED_ORIGIN`**, so a copy of the review page
   hosted elsewhere cannot use this endpoint against the church's
   repository.

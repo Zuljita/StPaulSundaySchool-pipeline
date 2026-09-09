@@ -35,6 +35,7 @@ button{font-family:var(--display);font-size:.85rem;font-weight:600;
      border-radius:5px;border:1px solid transparent;padding:.5rem .9rem;cursor:pointer}
 button:disabled{opacity:.45;cursor:not-allowed}
 .btn-ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.5)}
+.gbtn{display:inline-flex;align-items:center;min-height:34px}
 .btn-approve{background:var(--ok);color:#fff}
 .btn-changes{background:#fff;color:var(--err);border-color:var(--err)}
 
@@ -118,7 +119,9 @@ h1.sunday{font-family:var(--display);font-weight:600;font-size:1.5rem;margin:.2r
     <span class="church" id="churchName"></span>
     <span class="spacer"></span>
     <span id="who" class="church"></span>
-    <button id="signin" class="btn-ghost">Sign in with Google</button>
+    <!-- Google renders its own sign-in button in here. See Auth.init. -->
+    <span id="gbtn" class="gbtn"></span>
+    <button id="signin" class="btn-ghost hidden">Sign out</button>
   </div>
 </header>
 
@@ -135,6 +138,19 @@ const $ = (s, r) => (r || document).querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t);
   if (c) n.className = c; if (x !== undefined) n.textContent = x; return n; };
 
+// Violations that block approval: the ones introduced since
+// standards/lint-baseline.json, which is what the service enforces. The
+// raw count is still shown, because a reviewer should see the whole
+// state of the text, but it is not what decides whether he may sign.
+//
+// A bundle written before new_errors existed cannot tell new from known,
+// so it counts everything and the button stays disabled. That is the
+// same way the service fails on the same bundle, and the two must agree:
+// an enabled button that the service then refuses is a worse experience
+// than a disabled one that explains itself.
+const blockingErrors = (lint) =>
+  typeof lint?.new_errors === "number" ? lint.new_errors : (lint?.errors || 0);
+
 // ---------------------------------------------------------------------
 // Auth. Google Identity Services, so a reviewer needs no account beyond
 // the one the church already uses. The ID token is held in memory only:
@@ -149,24 +165,90 @@ const Auth = {
   token: null,
   user: null,
 
+  // Set once google.accounts.id has been initialised. Rendering the
+  // button before that silently does nothing.
+  ready: false,
+
+  // Why signing in is impossible, when it is. Rendered as a banner.
+  // Null means sign-in is available as far as this page can tell.
+  problem: null,
+
   configured() { return !!(CFG.service && CFG.googleClientId); },
 
+  /**
+   * Set up Google Identity Services and render Google's own button as
+   * the way in.
+   *
+   * The button is the point. This page used to offer a control of its
+   * own that called google.accounts.id.prompt(), which is One Tap, and
+   * One Tap declines to appear in ordinary circumstances: Google
+   * suppresses it for a site after a couple of dismissals, and blocked
+   * third-party cookies or a browser without FedCM suppress it outright.
+   * It declines silently. No popup, no error, no callback, and no
+   * request to the service, so a reviewer who could not sign in left no
+   * trace anywhere, on their screen or in the Worker. A pastor found
+   * that out by telephone.
+   *
+   * renderButton uses the popup flow, which none of that affects.
+   */
   init() {
-    if (!Auth.configured() || !window.google?.accounts?.id) return;
+    if (!Auth.configured()) return;
+    if (!window.google?.accounts?.id) {
+      // The library never loaded: an extension, a network filter, or no
+      // connection. Say so where it can be read, rather than waiting for
+      // a click to alert about it.
+      Auth.problem =
+        "Google sign-in did not load. Something is blocking " +
+        "accounts.google.com: a browser extension, a network filter, or " +
+        "a dropped connection. Reload, or try another browser.";
+      return;
+    }
     google.accounts.id.initialize({
       client_id: CFG.googleClientId,
       callback: (res) => Auth.onCredential(res),
       auto_select: false,
       cancel_on_tap_outside: true,
     });
+    Auth.ready = true;
+    Auth.drawButton();
+    Auth.oneTap();
   },
 
-  prompt() {
-    if (!window.google?.accounts?.id) {
-      alert("Google sign-in did not load. Check your connection and reload.");
-      return;
+  // Google owns the markup it renders, so a button is redrawn rather
+  // than hidden and shown: signing out has to leave a working one
+  // behind. Returns whether it drew anything, because a caller that has
+  // no button to offer needs to say something else instead.
+  drawButton(box) {
+    box = box || document.getElementById("gbtn");
+    if (!box || !Auth.ready) return false;
+    box.innerHTML = "";
+    google.accounts.id.renderButton(box, {
+      type: "standard", theme: "filled_blue", size: "medium",
+      text: "signin_with", shape: "pill",
+    });
+    return true;
+  },
+
+  // One Tap, offered but never relied on. The notification callback is
+  // why this is worth keeping at all: when One Tap does not appear, the
+  // reason reaches the console, so "he clicked and nothing happened"
+  // becomes a question somebody can answer.
+  oneTap() {
+    try {
+      google.accounts.id.prompt((n) => {
+        let why = "";
+        // These readers are deprecated under FedCM and throw there.
+        // Failing to explain must not become failing to sign in, so the
+        // button stands on its own and this only ever reports.
+        try {
+          if (n.isNotDisplayed?.()) why = "was not displayed: " + n.getNotDisplayedReason?.();
+          else if (n.isSkippedMoment?.()) why = "was skipped: " + n.getSkippedReason?.();
+        } catch { why = "gave no reason (FedCM)"; }
+        if (why) console.info("[stpaul] One Tap " + why + ". The button still works.");
+      });
+    } catch (e) {
+      console.info("[stpaul] One Tap unavailable: " + ((e && e.message) || e));
     }
-    google.accounts.id.prompt();
   },
 
   onCredential(res) {
@@ -313,10 +395,14 @@ async function viewSunday(main, slug) {
     `${d.meta.gospel || ""}${d.meta.translation ? " (" + d.meta.translation + ")" : ""}`));
 
   const ap = d.approval;
-  const banner = el("div", "banner " + (ap.ok ? "ok" : (d.lint.errors ? "err" : "info")));
+  const banner = el("div", "banner " +
+    (ap.ok ? "ok" : (blockingErrors(d.lint) ? "err" : "info")));
   banner.textContent = ap.ok
     ? "Approved. " + ap.detail
-    : `${ap.detail} ${d.lint.errors} rule error(s) outstanding.`;
+    : `${ap.detail} ${d.lint.errors} rule error(s) outstanding` +
+      (typeof d.lint.new_errors === "number"
+        ? `, ${d.lint.new_errors} of them introduced since the baseline.`
+        : ".");
   main.appendChild(banner);
 
   if (ap.reviews && ap.reviews.length) {
@@ -373,10 +459,13 @@ function approvalBar(d) {
     bar.appendChild(w); return bar;
   }
   if (!Auth.token) {
-    const b = el("button", "btn-approve", "Sign in to approve");
-    b.onclick = () => Auth.prompt();
     w.appendChild(el("span", "hash", "· sign in with Google to record a decision"));
-    w.appendChild(b); bar.appendChild(w); return bar;
+    const box = el("span", "gbtn");
+    if (!Auth.drawButton(box)) {
+      box.appendChild(el("span", "hash",
+        Auth.problem || "· sign-in is still loading, one moment"));
+    }
+    w.appendChild(box); bar.appendChild(w); return bar;
   }
 
   const note = el("input", "note");
@@ -386,13 +475,23 @@ function approvalBar(d) {
   const approve = el("button", "btn-approve", "Approve this text");
   const changes = el("button", "btn-changes", "Request changes");
 
-  if (d.lint.errors) {
+  const blocking = blockingErrors(d.lint);
+  if (blocking) {
     approve.disabled = true;
-    approve.title = `${d.lint.errors} rule error(s) outstanding. Fix them first.`;
+    approve.title = typeof d.lint.new_errors === "number"
+      ? `${blocking} rule error(s) introduced since the baseline. Fix those ` +
+        `first. The rest are recorded in standards/lint-baseline.json and ` +
+        `are not yours to clear here.`
+      : `${blocking} rule error(s) outstanding, and this review bundle is too ` +
+        `old to say which are new. Regenerate it with tools/make_review.py.`;
   }
 
-  approve.onclick = () => submit(d, "APPROVE", note.value, approve, changes);
-  changes.onclick = () => submit(d, "REQUEST_CHANGES", note.value, approve, changes);
+  // Exactly the values tools/stpaul/approval.py counts, and the only two
+  // the service accepts. It used to be sent "APPROVE" and
+  // "REQUEST_CHANGES", which matched neither, and were recorded as
+  // approvals.
+  approve.onclick = () => submit(d, "approved", note.value, approve, changes);
+  changes.onclick = () => submit(d, "changes_requested", note.value, approve, changes);
   w.appendChild(approve); w.appendChild(changes);
   bar.appendChild(w);
   return bar;
@@ -420,7 +519,11 @@ async function submit(d, decision, note, ...buttons) {
     });
     const out = await r.json();
     if (!r.ok) { alert(out.error || "The service refused the request."); return; }
-    alert(decision === "approved"
+    // What the service recorded, not what this page asked it to. Those
+    // two disagreed for the whole of this bug's life, and the page was
+    // the one that was wrong: it reported "changes requested" while an
+    // approval went into the repository.
+    alert(out.decision === "approved"
       ? "Approval recorded for " + out.reviewer + ", bound to content "
         + out.content_sha256.slice(0, 12) + "."
       : "Changes requested. The Sunday stays unapproved.");
@@ -440,17 +543,29 @@ async function render() {
 
   const signin = $("#signin");
   const who = $("#who");
+  const gbtn = $("#gbtn");
   if (!Auth.configured()) {
     signin.classList.add("hidden");
+    gbtn.classList.add("hidden");
     who.textContent = "read-only";
   } else if (Auth.token && Auth.user) {
     who.textContent = Auth.user.name + " · " + Auth.user.email;
+    gbtn.classList.add("hidden");
+    signin.classList.remove("hidden");
     signin.textContent = "Sign out";
     signin.onclick = () => Auth.signOut();
   } else {
     who.textContent = "";
-    signin.textContent = "Sign in with Google";
-    signin.onclick = () => Auth.prompt();
+    signin.classList.add("hidden");
+    gbtn.classList.remove("hidden");
+    Auth.drawButton();
+  }
+
+  // Sign-in is impossible. Say that, rather than letting the index fail
+  // with "not signed in" and pointing at a button that is not there.
+  if (Auth.problem && !Auth.token) {
+    main.appendChild(el("div", "banner err", Auth.problem));
+    return;
   }
 
   const slug = location.hash.replace(/^#/, "");
