@@ -19,12 +19,13 @@ already have.
 3. A pastor opens the app, signs in with Google, reads all twelve pieces
    with every rule violation shown against the piece it appears in, and
    approves.
-4. The service verifies the token, checks the roster, signs the review
-   with Ed25519, and commits `approvals/<slug>.approval.json`.
+4. The service verifies the token, checks the roster, and commits
+   `approvals/<slug>.approval.json`.
 5. `tools/build.py` will now render that Sunday, and refuses any other.
 
-Approve is disabled while the linter reports errors. Nobody should be
-asked to sign text that already breaks a written standard.
+Approve is disabled while the linter reports violations introduced since
+`standards/lint-baseline.json`. Nobody should be asked to approve text
+that breaks a written standard it did not break before.
 
 ---
 
@@ -105,9 +106,9 @@ Whenever the repository moves, exactly four things:
 | `config.js` | `service`, only if the Worker moved to another Cloudflare account |
 | GitHub token | reissue, scoped to the data repository at its new path |
 
-Nothing in the code is pinned to an owner. Signed approvals already on
-record stay valid: a signature covers the reviewer, the Sunday and the
-content hash, none of which a transfer touches.
+Nothing in the code is pinned to an owner. Approvals already on record
+stay valid: each covers the reviewer, the Sunday and the content hash,
+none of which a transfer touches.
 
 ### 1. Point the hostname at Cloudflare
 
@@ -162,17 +163,17 @@ reviewer's mail, calendar or files, and nothing should.
 Copy the **Client ID**. It is public by design; it identifies the app, it
 does not authenticate it.
 
-### 3. Generate the key and deploy
+### 3. Deploy
 
-`services/approval/setup.sh` does both, in the order that keeps the
-signing key out of every place it does not belong:
+`services/approval/setup.sh` sets the one secret the service needs and
+deploys it:
 
 **PowerShell**
 
 ```powershell
 Set-Location D:\dev\StPaulSundaySchool-pipeline\services\approval
 npx wrangler login
-.\setup.ps1 D:\dev\StPaulSundaySchool
+.\setup.ps1
 ```
 
 **bash**
@@ -180,7 +181,7 @@ npx wrangler login
 ```bash
 cd services/approval
 npx wrangler login
-./setup.sh /path/to/data-repo
+./setup.sh
 ```
 
 It refuses to run while `GOOGLE_CLIENT_ID` is still empty, since
@@ -190,41 +191,15 @@ client ID from step 2 into `wrangler.toml` first.
 
 What it does:
 
-1. Generates the Ed25519 keypair. The public half is written to
-   `standards/approval-key.pub` in the data repository, for you to
-   commit. **The private half is piped straight into Cloudflare's secret
-   store**, so it is never displayed, never written to disk, and never in
-   your shell history. Nobody holds it, including anyone helping you set
-   this up.
-2. Prompts for the GitHub token. Use a fine-grained PAT with **Contents:
+1. Prompts for the GitHub token. Use a fine-grained PAT with **Contents:
    read and write on the data repository only**. Wrangler does not echo
    it.
-3. Builds, then deploys the API and the review page together.
+2. Builds, then deploys the API and the review page together.
 
-If a public key already exists it skips key generation rather than
-replacing it, because a new key invalidates every approval signed with
-the old one and those Sundays would need re-approving.
-
-Doing it by hand instead:
-
-**PowerShell.** Capture into a variable rather than piping straight from
-python: PowerShell's native pipe can rewrite line endings. The key is in
-memory only, never on disk.
+Doing it by hand instead. With no key to pipe, the two shells no longer
+differ:
 
 ```powershell
-$env:STPAUL_DATA = "D:\dev\StPaulSundaySchool"
-$pem = (& python ..\..\tools\keygen.py --private-to-stdout) -join "`n"
-$pem | npx wrangler secret put APPROVAL_SIGNING_KEY
-Remove-Variable pem
-npx wrangler secret put GITHUB_TOKEN
-npx wrangler deploy
-```
-
-**bash**
-
-```bash
-STPAUL_DATA=/path/to/data-repo python ../../tools/keygen.py --private-to-stdout \
-  | npx wrangler secret put APPROVAL_SIGNING_KEY
 npx wrangler secret put GITHUB_TOKEN
 npx wrangler deploy
 ```
@@ -240,7 +215,6 @@ In the data repository, `standards/reviewers.yml`:
 policy:
   required_approvals: 1
   required_roles: [pastor]
-  require_signed_approvals: true
 
 reviewers:
   - name: "Bryan Wolfmueller"
@@ -248,9 +222,8 @@ reviewers:
     email: "bryan@stpaulaustin.org"     # the Google address, lowercase
 ```
 
-`require_signed_approvals: true` is the switch that closes the gate. With
-it on, an unsigned approval is not an approval, and a missing public key
-fails closed rather than passing unchecked.
+The roster is the switch that closes the gate: only an address listed
+here can approve, and `required_roles` decides which of them count.
 
 Delegation is one more entry. Because it is a commit, adding an approver
 is something a person can see and question.
@@ -295,15 +268,16 @@ python tools\make_review.py
 python -m http.server 8787 --directory review
 ```
 
-Approvals then go through the CLI, which records them unsigned:
+Approvals then go through the CLI:
 
 ```powershell
 python tools\approve.py 2026-09-27-trinity-17 `
     --reviewer "Bryan Wolfmueller" --role pastor --note "reviewed 9/25"
 ```
 
-Those do not satisfy `require_signed_approvals`. That is deliberate: a
-command anyone with a checkout can run is not a doctrinal approval.
+These record `method: local-cli`, which `tools/history.py` marks as
+recorded from the command line. They prove only that someone could run
+the command, so they are for local testing rather than for the gate.
 
 ---
 
