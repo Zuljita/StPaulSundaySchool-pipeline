@@ -1,0 +1,48 @@
+:root {
+  --font-display: "Instrument Serif", Georgia, serif;
+  --font-body: "Source Serif 4", Georgia, serif;
+  --font-label: "Montserrat", system-ui, sans-serif;
+
+  /* Display — Instrument Serif only */
+  --size-h1: 38px;
+  --size-title: 30px;
+  --size-title-tight: 27px;
+  --size-theme: 22px;
+  --size-panel-verse: 20px;
+  --size-quote: 19px;
+  --size-prompt: 17px;
+
+  /* Body — Source Serif 4 only */
+  --size-body: 15px;
+  --size-body-lead: 14.5px;
+  --size-body-sm: 13.5px;
+  --size-scripture: 13.5px;
+  --size-scripture-sm: 12.5px;
+
+  /* Label — Montserrat only, always uppercase */
+  --size-chip: 11.5px;
+  --size-label: 10px;
+  --size-chip-sm: 9.5px;
+  --size-meta: 9px;
+  --size-credit: 8.5px;
+  --size-verse-number: 8px;
+  --size-art-credit: 8px;
+
+  --lh-display: 0.96;
+  --lh-title: 1;
+  --lh-theme: 1.2;
+  --lh-quote: 1.28;
+  --lh-body: 1.5;
+  --lh-body-tight: 1.45;
+  --lh-scripture: 1.52;
+  --lh-meta: 1.95;
+
+  --track-label: 0.13em;
+  --track-meta: 0.1em;
+  --track-credit: 0.04em;
+  --track-wordmark: 0.1em;
+
+  --weight-label: 500;
+  --weight-chip: 600;
+  --weight-strong: 600;
+}

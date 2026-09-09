@@ -1,0 +1,41 @@
+:root {
+  /* The sheet. Fixed: content that misses the box is clipped, not reflowed. */
+  --page-width: 816px;
+  --page-height: 1056px;
+
+  --page-pad-top: 0.4in;
+  --page-pad-side: 0.55in;
+  --page-pad-foot: 0.34in;
+  --lesson-pad-top: 0.34in;
+  --lesson-pad-foot: 0.3in;
+
+  /* The rail-and-substance frame used by nearly every piece */
+  /* minmax(0,…) is load-bearing: a bare 2.05fr lets a multi-column
+     Gospel block overflow the sheet sideways. */
+  --grid-rail: 1fr minmax(0, 2.05fr);
+  --grid-gutter: 26px;
+  --rail-pad: 24px;
+
+  --stack-lg: 13px;
+  --stack-md: 12px;
+  --stack-sm: 9px;
+  --stack-xs: 6px;
+
+  --step-minute-col: 78px;
+  --step-gutter: 16px;
+
+  --chip-pad: 4px 10px;
+  --chip-pad-sm: 3px 8px;
+  --panel-pad: 11px 14px;
+  --tint-pad: 8px 11px;
+
+  --logo-width: 152px;
+  --artwork-height: 168px;
+
+  --writing-gap: 5px;
+  --writing-height: 14px;
+
+  --rule-heavy: 2px;
+  --rule-medium: 1px;
+  --rule-hair: 0.5px;
+}

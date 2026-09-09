@@ -1,0 +1,26 @@
+<!-- @dsCard group="Brand" viewport="700x190" name="Artwork" subtitle="Classic religious art, changed weekly, fixed panel geometry" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 14px; background: var(--surface-page); font-family: var(--font-body); color: var(--text-body); }
+  p { margin: 0; }
+  .sw { display: flex; align-items: center; gap: 9px; }
+  .box { width: 30px; height: 18px; flex: none; }
+  .hex { font-family: var(--font-label); font-size: var(--size-meta); letter-spacing: 0.06em; color: var(--text-meta); }
+  .use { font-size: 13px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 22px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 20px; }
+</style>
+</head>
+<body>
+<div style="display: grid; grid-template-columns: 168px 1fr; gap: 24px; align-items: start;">
+  <figure style="margin: 0; display: flex; flex-direction: column; gap: 4px;">
+    <div data-slot="artwork" style="display: block; width: 100%; height: 120px; background: var(--surface-tint); border: var(--rule-hair) solid var(--border-hairline);"></div>
+    <figcaption style="font-family: var(--font-label); font-size: var(--size-art-credit); line-height: 1.4; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-meta);">Artist · Title, Year</figcaption>
+  </figure>
+  <p style="font-size: 13px; line-height: var(--lh-body); color: var(--text-secondary);">One piece per week, at the foot of the student rail: 168px tall, cover crop, hairline border, credit in 8px Montserrat beneath. Public-domain painting or engraving of the week’s text. No illustration, no clip art, no drawn substitutes — an absent image leaves the panel empty rather than filled with something else.</p>
+</div></body>
+</html>

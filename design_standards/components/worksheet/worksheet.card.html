@@ -1,0 +1,43 @@
+<!-- @dsCard group="Components" viewport="700x235" name="Worksheet parts" subtitle="Checkbox list, ruled writing lines, artwork panel" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { margin: 0; padding: 14px; background: var(--surface-page); font-family: var(--font-body); color: var(--text-body); }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+  .lbl { font-family: var(--font-label); font-size: var(--size-label); font-weight: var(--weight-label); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-label); margin: 0 0 5px; }
+  .chip { background: var(--surface-solid); color: var(--on-solid); padding: var(--chip-pad); font-family: var(--font-label); font-size: var(--size-chip); font-weight: var(--weight-chip); letter-spacing: var(--track-label); text-transform: uppercase; }
+  .chip.sm { padding: var(--chip-pad-sm); font-size: var(--size-chip-sm); }
+  p { margin: 0; }
+</style>
+</head>
+<body>
+<div style="display: grid; grid-template-columns: 1fr 1fr 150px; gap: 22px; align-items: start;">
+  <div>
+    <p class="lbl">What You Need</p>
+    <ul style="margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: var(--size-body-sm); line-height: var(--lh-body-tight);">
+      <li style="display: flex; gap: 8px;"><span style="color: var(--checkbox);">□</span><span>Student handouts, one per child</span></li>
+      <li style="display: flex; gap: 8px;"><span style="color: var(--checkbox);">□</span><span>Pencils</span></li>
+      <li style="display: flex; gap: 8px;"><span style="color: var(--checkbox);">□</span><span>Crayons or colored pencils</span></li>
+      <li style="display: flex; gap: 8px;"><span style="color: var(--checkbox);">□</span><span>A Bible for each pair</span></li>
+    </ul>
+  </div>
+  <div>
+    <p class="lbl">The Father’s Table</p>
+    <div style="display: grid; gap: var(--writing-gap);">
+      <div style="display: flex; align-items: baseline; gap: 7px;"><span style="font-family: var(--font-label); font-size: var(--size-chip-sm); color: var(--text-meta);">1</span><span style="flex: 1; border-bottom: var(--rule-hair) solid var(--rule-writing); height: var(--writing-height);"></span></div>
+      <div style="display: flex; align-items: baseline; gap: 7px;"><span style="font-family: var(--font-label); font-size: var(--size-chip-sm); color: var(--text-meta);">2</span><span style="flex: 1; border-bottom: var(--rule-hair) solid var(--rule-writing); height: var(--writing-height);"></span></div>
+      <div style="display: flex; align-items: baseline; gap: 7px;"><span style="font-family: var(--font-label); font-size: var(--size-chip-sm); color: var(--text-meta);">3</span><span style="flex: 1; border-bottom: var(--rule-hair) solid var(--rule-writing); height: var(--writing-height);"></span></div>
+      <div style="display: flex; align-items: baseline; gap: 7px;"><span style="font-family: var(--font-label); font-size: var(--size-chip-sm); color: var(--text-meta);">4</span><span style="flex: 1; border-bottom: var(--rule-hair) solid var(--rule-writing); height: var(--writing-height);"></span></div>
+      <div style="display: flex; align-items: baseline; gap: 7px;"><span style="font-family: var(--font-label); font-size: var(--size-chip-sm); color: var(--text-meta);">5</span><span style="flex: 1; border-bottom: var(--rule-hair) solid var(--rule-writing); height: var(--writing-height);"></span></div>
+    </div>
+  </div>
+  <figure style="margin: 0; display: flex; flex-direction: column; gap: 4px;">
+    <div data-slot="artwork" style="display: block; width: 100%; height: var(--artwork-height); background: var(--surface-tint); border: var(--rule-hair) solid var(--border-hairline);"></div>
+    <figcaption style="font-family: var(--font-label); font-size: var(--size-art-credit); line-height: 1.4; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-meta);">Artist · Title, Year</figcaption>
+  </figure>
+</div>
+</body>
+</html>

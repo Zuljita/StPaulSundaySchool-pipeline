@@ -1,0 +1,34 @@
+<!-- @dsCard group="Spacing" viewport="700x150" name="Vertical rhythm" subtitle="Four stack values, plus the 78px minute column" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 14px; background: var(--surface-page); font-family: var(--font-body); color: var(--text-body); }
+  p { margin: 0; }
+  .sw { display: flex; align-items: center; gap: 9px; }
+  .box { width: 30px; height: 18px; flex: none; }
+  .hex { font-family: var(--font-label); font-size: var(--size-meta); letter-spacing: 0.06em; color: var(--text-meta); }
+  .use { font-size: 13px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 22px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 20px; }
+</style>
+</head>
+<body>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start;">
+  <div style="display: grid; gap: 5px; font-size: 13px; line-height: var(--lh-body-tight);">
+    <p><span class="hex">13px</span> &nbsp;between major blocks</p>
+    <p><span class="hex">12px</span> &nbsp;between rail items</p>
+    <p><span class="hex">9px</span> &nbsp;between lesson steps</p>
+    <p><span class="hex">6px</span> &nbsp;between paragraphs in a block</p>
+  </div>
+  <div>
+    <div style="display: grid; grid-template-columns: var(--step-minute-col) 1fr; gap: var(--step-gutter); border-top: var(--rule-hair) solid var(--border-hairline-soft); padding-top: 6px;">
+      <p style="font-family: var(--font-label); font-size: var(--size-label); font-weight: var(--weight-label); letter-spacing: var(--track-meta); text-transform: uppercase; color: var(--text-label);">4 · 5 min</p>
+      <p style="font-size: var(--size-body-lead); line-height: var(--lh-body-tight);"><strong style="font-weight: var(--weight-strong);">Memory work.</strong> Say it together three times.</p>
+    </div>
+    <p style="margin-top: 6px;" class="hex">78px minute column · 16px gutter</p>
+  </div>
+</div></body>
+</html>

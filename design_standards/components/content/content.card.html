@@ -1,0 +1,47 @@
+<!-- @dsCard group="Components" viewport="700x390" name="Content blocks" subtitle="Scripture, Law and Gospel pair, lesson step, navy and tint panels" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { margin: 0; padding: 14px; background: var(--surface-page); font-family: var(--font-body); color: var(--text-body); }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+  .lbl { font-family: var(--font-label); font-size: var(--size-label); font-weight: var(--weight-label); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-label); margin: 0 0 5px; }
+  .chip { background: var(--surface-solid); color: var(--on-solid); padding: var(--chip-pad); font-family: var(--font-label); font-size: var(--size-chip); font-weight: var(--weight-chip); letter-spacing: var(--track-label); text-transform: uppercase; }
+  .chip.sm { padding: var(--chip-pad-sm); font-size: var(--size-chip-sm); }
+  p { margin: 0; }
+</style>
+</head>
+<body>
+<p class="lbl">The Holy Gospel · Book 0:0–00</p>
+<div style="column-count: 2; column-gap: var(--grid-gutter); column-rule: var(--rule-hair) solid var(--border-hairline-soft); font-size: var(--size-scripture-sm); line-height: var(--lh-scripture); margin-bottom: 13px;">
+  <p><sup style="font-family: var(--font-label); font-size: var(--size-verse-number); color: var(--verse-number);">26</sup>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. <sup style="font-family: var(--font-label); font-size: var(--size-verse-number); color: var(--verse-number);">27</sup>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+</div>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 13px;">
+  <div style="border-top: var(--rule-heavy) solid var(--rule-law); padding-top: 7px;">
+    <p style="margin: 0 0 4px; font-family: var(--font-label); font-size: var(--size-chip-sm); font-weight: var(--weight-label); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--rule-law);">The Law</p>
+    <p style="font-size: var(--size-scripture-sm); line-height: var(--lh-body-tight);">What the text demands, accuses, exposes.</p>
+  </div>
+  <div style="border-top: var(--rule-heavy) solid var(--rule-gospel); padding-top: 7px;">
+    <p style="margin: 0 0 4px; font-family: var(--font-label); font-size: var(--size-chip-sm); font-weight: var(--weight-label); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--rule-gospel);">The Gospel</p>
+    <p style="font-size: var(--size-scripture-sm); line-height: var(--lh-body-tight);">What God gives, promises, does.</p>
+  </div>
+</div>
+<div style="display: grid; grid-template-columns: var(--step-minute-col) 1fr; gap: var(--step-gutter); align-items: start; border-top: var(--rule-hair) solid var(--border-hairline-soft); padding-top: 6px; margin-bottom: 13px;">
+  <p style="font-family: var(--font-label); font-size: var(--size-label); font-weight: var(--weight-label); letter-spacing: var(--track-meta); text-transform: uppercase; color: var(--text-label);">1 · 7 min</p>
+  <div>
+    <p style="margin: 0 0 6px; font-size: var(--size-body-lead); line-height: var(--lh-body-tight);"><strong style="font-weight: var(--weight-strong);">Step title.</strong> Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+    <div style="background: var(--surface-tint); padding: var(--tint-pad);">
+      <p style="margin: 0 0 2px; font-family: var(--font-label); font-size: var(--size-meta); font-weight: var(--weight-label); letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-label);">Inline Text</p>
+      <p style="font-size: var(--size-scripture-sm); line-height: var(--lh-body-tight);">Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
+    </div>
+  </div>
+</div>
+<div style="background: var(--surface-solid); color: var(--on-solid); padding: var(--panel-pad);">
+  <p style="margin: 0 0 4px; font-family: var(--font-label); font-size: var(--size-label); font-weight: var(--weight-label); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--on-solid-label);">Memory Work</p>
+  <p style="font-family: var(--font-display); font-size: var(--size-panel-verse); line-height: var(--lh-quote);">“Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.”</p>
+  <p style="margin: 4px 0 0; font-family: var(--font-label); font-size: var(--size-meta); letter-spacing: 0.12em; text-transform: uppercase; color: var(--on-solid-label);">Book 0:0</p>
+</div>
+</body>
+</html>

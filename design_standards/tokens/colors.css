@@ -1,0 +1,46 @@
+:root {
+  /* Base — sampled from the church logo */
+  --navy: #082858;
+  --blue: #2858b8;
+  --blue-light: #88c8d8;
+  --red: #a81818;
+
+  --ink: #1c1c19;
+  --ink-secondary: #3b3b36;
+  --ink-muted: #5c5c54;
+
+  --paper: #fffefb;
+  --tint: #eef7fa;
+  --hairline-soft: #cfe0ea;
+  --rule-writing: #9fb2c9;
+
+  /* Church year — colors the season marker in the meta block */
+  --season-trinity: #2e6b4b;
+  --season-red: #a81818;
+  --season-violet: #5b3f8c;
+  --season-blue: #082858;
+  --season-gold: #c9a227;
+
+  /* Semantic — always reach for these in components */
+  --text-body: var(--ink);
+  --text-secondary: var(--ink-secondary);
+  --text-meta: var(--ink-muted);
+  --text-display: var(--navy);
+  --text-label: var(--blue);
+
+  --surface-page: var(--paper);
+  --surface-tint: var(--tint);
+  --surface-solid: var(--navy);
+  --on-solid: var(--paper);
+  --on-solid-label: var(--blue-light);
+  --on-solid-body: #cfe6ee;
+
+  --border-masthead: var(--navy);
+  --border-hairline: var(--blue-light);
+  --border-hairline-soft: var(--hairline-soft);
+
+  --verse-number: var(--red);
+  --rule-law: var(--red);
+  --rule-gospel: var(--blue);
+  --checkbox: var(--blue-light);
+}

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Montserrat:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet" />
+<style>
+  doc-page:not(:defined) { visibility: hidden; }
+  body { margin: 0; }
+  a { color: #2858b8; }
+  a:hover { color: #082858; }
+</style>
+<script src="./doc-page.js"></script>
+</helmet>
+<doc-page>
+
+<section class="page" data-screen-label="01" style="font-family: 'Source Serif 4', Georgia, serif; color: #1c1c19; background: #fffefb; box-sizing: border-box;">
+  <div style="padding: 0.4in 0.55in 0.34in; height: 100%; box-sizing: border-box; display: flex; flex-direction: column;">
+
+    <header style="display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 24px; border-bottom: 2px solid #082858; padding-bottom: 9px; margin-bottom: 12px;">
+      <div>
+        <div style="display: flex; align-items: flex-end; gap: 11px; margin-bottom: 8px;">
+          <img src="assets/stpaul-logo.png" alt="St. Paul Lutheran Church" style="display: block; width: 152px; height: auto;" />
+          <span style="font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #082858; padding-bottom: 1px;">Sunday School</span>
+        </div>
+        <div style="margin: 0 0 8px;"><span style="background: #082858; color: #fffefb; padding: 4px 10px; font-family: 'Montserrat', sans-serif; font-size: 11.5px; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase;">Design Standard</span></div>
+        <h1 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-size: 38px; font-weight: 400; line-height: 0.96; letter-spacing: -0.01em; color: #082858;">Foundations</h1>
+      </div>
+      <p style="margin: 0; text-align: right; font-family: 'Montserrat', sans-serif; font-size: 9px; font-weight: 500; line-height: 1.95; letter-spacing: 0.1em; text-transform: uppercase; color: #5c5c54;">Revision 1<br />September 2026<br />Letter portrait<br /><span style="color: {{ seasonColor }};">■</span> Season marker</p>
+    </header>
+
+    <p style="margin: 0 0 13px; font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-size: 22px; line-height: 1.2; color: #2858b8; flex: none;">Twelve pieces, one Gospel, one look every week. <span style="color: #5c5c54; font-style: normal; font-size: 15px; font-family: 'Source Serif 4', Georgia, serif;">Everything on these three pages is set in the system it describes.</span></p>
+
+    <div style="display: grid; grid-template-columns: 1fr 2.05fr; gap: 26px; flex: none;">
+
+      <aside style="display: flex; flex-direction: column; gap: 12px; border-right: 0.5px solid #88c8d8; padding-right: 24px;">
+        <div>
+          <h2 style="margin: 0 0 5px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">Page Geometry</h2>
+          <p style="margin: 0 0 6px; font-size: 13.5px; line-height: 1.5;">Letter portrait, one <code style="font-family: 'Montserrat', sans-serif; font-size: 12px;">.page</code> per printed sheet. The page box is exactly <strong style="font-weight: 600;">816 × 1056 px</strong>. Content that misses it is clipped, not reflowed.</p>
+          <p style="margin: 0; font-size: 13.5px; line-height: 1.5;">Margins <strong style="font-weight: 600;">0.4in top, 0.55in sides, 0.34in foot</strong>. Lesson pages may tighten to 0.34 / 0.55 / 0.3.</p>
+        </div>
+
+        <div style="background: #eef7fa; padding: 9px 11px;">
+          <p style="margin: 0; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">The two-column frame</p>
+          <p style="margin: 4px 0 0; font-size: 13.5px; line-height: 1.5;">Nearly every piece is a <strong style="font-weight: 600;">1 : 2.05</strong> grid, 26px gutter, hairline rule between: a reference rail on the left, the week's substance on the right.</p>
+        </div>
+
+        <div>
+          <h2 style="margin: 0 0 5px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">Footer Pinning</h2>
+          <p style="margin: 0; font-size: 13.5px; line-height: 1.5;">The inner wrapper is a full-height flex column; the footer takes <code style="font-family: 'Montserrat', sans-serif; font-size: 12px;">margin-top: auto</code>. Every other direct child takes <code style="font-family: 'Montserrat', sans-serif; font-size: 12px;">flex: none</code>, or a squeezed multi-column block spills sideways off the sheet.</p>
+        </div>
+
+        <div style="border-top: 0.5px solid #88c8d8; padding-top: 11px;">
+          <h2 style="margin: 0 0 5px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">Print Reality</h2>
+          <p style="margin: 0; font-size: 13.5px; line-height: 1.5;">Color laser, double-sided, background graphics on. Body ink is near-black, never navy: navy at body size prints visibly blue.</p>
+        </div>
+      </aside>
+
+      <div style="display: flex; flex-direction: column; gap: 13px;">
+        <div>
+          <h2 style="margin: 0 0 7px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">Palette</h2>
+          <p style="margin: 0 0 8px; font-size: 14.5px; line-height: 1.48;">Sampled from the church logo. Two blues carry the identity; red is reserved for two jobs only. No color is decorative.</p>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px 22px;">
+            <div style="display: flex; align-items: center; gap: 9px;"><span style="width: 26px; height: 15px; background: #082858; flex: none;"></span><span style="font-family: 'Montserrat', sans-serif; font-size: 9px; letter-spacing: 0.06em; color: #5c5c54;">082858</span><span style="font-size: 13px;">Navy · headings, chips, panels</span></div>
+            <div style="display: flex; align-items: center; gap: 9px;"><span style="width: 26px; height: 15px; background: #2858b8; flex: none;"></span><span style="font-family: 'Montserrat', sans-serif; font-size: 9px; letter-spacing: 0.06em; color: #5c5c54;">2858b8</span><span style="font-size: 13px;">Blue · labels, accents</span></div>
+            <div style="display: flex; align-items: center; gap: 9px;"><span style="width: 26px; height: 15px; background: #88c8d8; flex: none;"></span><span style="font-family: 'Montserrat', sans-serif; font-size: 9px; letter-spacing: 0.06em; color: #5c5c54;">88c8d8</span><span style="font-size: 13px;">Light blue · hairlines</span></div>
+            <div style="display: flex; align-items: center; gap: 9px;"><span style="width: 26px; height: 15px; background: #a81818; flex: none;"></span><span style="font-family: 'Montserrat', sans-serif; font-size: 9px; letter-spacing: 0.06em; color: #5c5c54;">a81818</span><span style="font-size: 13px;">Red · verse numbers, the Law</span></div>
+            <div style="display: flex; align-items: center; gap: 9px;"><span style="width: 26px; height: 15px; background: #1c1c19; flex: none;"></span><span style="font-family: 'Montserrat', sans-serif; font-size: 9px; letter-spacing: 0.06em; color: #5c5c54;">1c1c19</span><span style="font-size: 13px;">Body ink</span></div>
+            <div style="display: flex; align-items: center; gap: 9px;"><span style="width: 26px; height: 15px; background: #3b3b36; flex: none;"></span><span style="font-family: 'Montserrat', sans-serif; font-size: 9px; letter-spacing: 0.06em; color: #5c5c54;">3b3b36</span><span style="font-size: 13px;">Secondary text</span></div>
+            <div style="display: flex; align-items: center; gap: 9px;"><span style="width: 26px; height: 15px; background: #5c5c54; flex: none;"></span><span style="font-family: 'Montserrat', sans-serif; font-size: 9px; letter-spacing: 0.06em; color: #5c5c54;">5c5c54</span><span style="font-size: 13px;">Meta, footers</span></div>
+            <div style="display: flex; align-items: center; gap: 9px;"><span style="width: 26px; height: 15px; background: #eef7fa; border: 0.5px solid #88c8d8; flex: none;"></span><span style="font-family: 'Montserrat', sans-serif; font-size: 9px; letter-spacing: 0.06em; color: #5c5c54;">eef7fa</span><span style="font-size: 13px;">Tint panel</span></div>
+            <div style="display: flex; align-items: center; gap: 9px;"><span style="width: 26px; height: 15px; background: #fffefb; border: 0.5px solid #cfe0ea; flex: none;"></span><span style="font-family: 'Montserrat', sans-serif; font-size: 9px; letter-spacing: 0.06em; color: #5c5c54;">fffefb</span><span style="font-size: 13px;">Paper</span></div>
+            <div style="display: flex; align-items: center; gap: 9px;"><span style="width: 26px; height: 15px; background: #9fb2c9; flex: none;"></span><span style="font-family: 'Montserrat', sans-serif; font-size: 9px; letter-spacing: 0.06em; color: #5c5c54;">9fb2c9</span><span style="font-size: 13px;">Writing rules</span></div>
+          </div>
+        </div>
+
+        <div style="border-top: 0.5px solid #88c8d8; padding-top: 11px;">
+          <h2 style="margin: 0 0 7px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">Type · Three Faces, Three Jobs</h2>
+          <div style="display: grid; gap: 9px;">
+            <div style="display: grid; grid-template-columns: 112px 1fr; gap: 16px; align-items: baseline; border-top: 0.5px solid #cfe0ea; padding-top: 7px;">
+              <p style="margin: 0; font-family: 'Montserrat', sans-serif; font-size: 9.5px; font-weight: 600; letter-spacing: 0.11em; text-transform: uppercase; color: #2858b8;">Instrument Serif</p>
+              <div>
+                <p style="margin: 0 0 2px; font-family: 'Instrument Serif', Georgia, serif; font-size: 26px; line-height: 1.05; color: #082858;">Display, never body copy</p>
+                <p style="margin: 0; font-size: 13px; line-height: 1.45; color: #3b3b36;">h1 38px · section titles 27–30px · pull quotes, memory verses and question prompts 17–21px. Italic for the Theme Line.</p>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 112px 1fr; gap: 16px; align-items: baseline; border-top: 0.5px solid #cfe0ea; padding-top: 7px;">
+              <p style="margin: 0; font-family: 'Montserrat', sans-serif; font-size: 9.5px; font-weight: 600; letter-spacing: 0.11em; text-transform: uppercase; color: #2858b8;">Source Serif 4</p>
+              <div>
+                <p style="margin: 0 0 2px; font-size: 15px; line-height: 1.5;">All body copy, at three sizes. Teacher narrative 14.5–15px, sidebars and activities 13–13.5px, Gospel text 12.5–13.5px.</p>
+                <p style="margin: 0; font-size: 13px; line-height: 1.45; color: #3b3b36;">Line-height 1.45–1.55. 12px is the floor for anything read aloud.</p>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 112px 1fr; gap: 16px; align-items: baseline; border-top: 0.5px solid #cfe0ea; padding-top: 7px;">
+              <p style="margin: 0; font-family: 'Montserrat', sans-serif; font-size: 9.5px; font-weight: 600; letter-spacing: 0.11em; text-transform: uppercase; color: #2858b8;">Montserrat</p>
+              <div>
+                <p style="margin: 0 0 3px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">Labels · meta · footers · verse numbers</p>
+                <p style="margin: 0; font-size: 13px; line-height: 1.45; color: #3b3b36;">Always uppercase, letter-spacing 0.1–0.13em, weight 500–600. Section labels 10px, meta 9px, footer credits 8.5px. Never in a sentence.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer style="border-top: 0.5px solid #88c8d8; margin-top: auto; padding-top: 7px; display: flex; justify-content: space-between; gap: 16px; font-family: 'Montserrat', sans-serif; font-size: 9px; line-height: 1.5; letter-spacing: 0.06em; text-transform: uppercase; color: #5c5c54;">
+      <span>Design Standard · St. Paul Sunday School</span>
+      <span>Page 1 of 3</span>
+    </footer>
+  </div>
+</section>
+
+<section class="page" data-screen-label="02" style="font-family: 'Source Serif 4', Georgia, serif; color: #1c1c19; background: #fffefb; box-sizing: border-box;">
+  <div style="padding: 0.4in 0.55in 0.34in; height: 100%; box-sizing: border-box; display: flex; flex-direction: column;">
+
+    <header style="display: flex; justify-content: space-between; align-items: baseline; gap: 20px; border-bottom: 1px solid #082858; padding-bottom: 8px; margin-bottom: 13px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-family: 'Montserrat', sans-serif; font-size: 9.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #082858;">St. Paul Sunday School</span>
+        <span style="background: #082858; color: #fffefb; padding: 3px 8px; font-family: 'Montserrat', sans-serif; font-size: 9.5px; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase;">Design Standard</span>
+      </div>
+      <p style="margin: 0; font-family: 'Montserrat', sans-serif; font-size: 9px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: #5c5c54;">Components</p>
+    </header>
+
+    <h2 style="margin: 0 0 3px; font-family: 'Instrument Serif', Georgia, serif; font-size: 27px; font-weight: 400; line-height: 1; color: #082858; flex: none;">The Component Set</h2>
+    <p style="margin: 0 0 9px; font-size: 12.5px; line-height: 1.42; color: #5c5c54; flex: none;">Nine parts build all twelve pieces. Each specimen below is live, at printing size.</p>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; flex: none;">
+
+      <div>
+        <h3 style="margin: 0 0 4px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">1 · Masthead</h3>
+        <p style="margin: 0 0 5px; font-size: 12px; line-height: 1.42;">Logo 152px baseline-aligned with <em>Sunday School</em>, so it reads as one line: St. Paul Sunday School. Then the identity chip, then the h1, with the meta block right-aligned opposite. A 2px navy rule closes it.</p>
+        <div style="border: 0.5px dashed #88c8d8; padding: 6px;">
+          <div style="display: flex; align-items: flex-end; gap: 9px; margin-bottom: 6px;">
+            <img src="assets/stpaul-logo.png" alt="" style="display: block; width: 96px; height: auto;" />
+            <span style="font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #082858;">Sunday School</span>
+          </div>
+          <span style="background: #082858; color: #fffefb; padding: 4px 10px; font-family: 'Montserrat', sans-serif; font-size: 11.5px; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase;">Primary 1–2 · Student Handout</span>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin: 0 0 4px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">2 · Identity Chip</h3>
+        <p style="margin: 0 0 5px; font-size: 12px; line-height: 1.42;">Solid navy, white Montserrat 11.5px 600, padding 4px 10px. Carries level and document type together, so a volunteer can find their sheet in a stack. 9.5px in running headers.</p>
+        <div style="border: 0.5px dashed #88c8d8; padding: 6px; display: flex; flex-wrap: wrap; gap: 6px;">
+          <span style="background: #082858; color: #fffefb; padding: 4px 10px; font-family: 'Montserrat', sans-serif; font-size: 11.5px; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase;">Nursery Notes · Birth–3</span>
+          <span style="background: #082858; color: #fffefb; padding: 4px 10px; font-family: 'Montserrat', sans-serif; font-size: 11.5px; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase;">Middle School · Teacher’s Guide</span>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin: 0 0 4px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">3 · Theme Line and Level Question</h3>
+        <p style="margin: 0 0 5px; font-size: 12px; line-height: 1.42;">Directly under the masthead rule on all twelve pieces, in identical wording. The level's fixed question follows in small roman type.</p>
+        <div style="border: 0.5px dashed #88c8d8; padding: 6px;">
+          <p style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-size: 21px; line-height: 1.2; color: #2858b8;">Lorem ipsum dolor sit amet consectetur adipiscing. <span style="color: #5c5c54; font-style: normal; font-size: 14px; font-family: 'Source Serif 4', Georgia, serif;">Where is the Law here, and where is the Gospel?</span></p>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin: 0 0 4px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">4 · Scripture Setting</h3>
+        <p style="margin: 0 0 5px; font-size: 12px; line-height: 1.42;">Running prose in two columns with a hairline column rule, never one verse per line. Verse numbers are Montserrat 8px superscript in red.</p>
+        <div style="border: 0.5px dashed #88c8d8; padding: 6px; font-size: 13px; line-height: 1.5;">
+          <p style="margin: 0;"><sup style="font-family: 'Montserrat', sans-serif; font-size: 8px; color: #a81818;">26</sup>Lorem ipsum dolor sit amet. <sup style="font-family: 'Montserrat', sans-serif; font-size: 8px; color: #a81818;">27</sup>Ut enim ad minim veniam, quis nostrud.</p>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin: 0 0 4px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">5 · Law and Gospel Pair</h3>
+        <p style="margin: 0 0 5px; font-size: 12px; line-height: 1.42;">Two equal columns. Law sits under a 2px red rule, Gospel under a 2px blue one. Never a single column, never reordered.</p>
+        <div style="border: 0.5px dashed #88c8d8; padding: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div style="border-top: 2px solid #a81818; padding-top: 6px;">
+            <p style="margin: 0 0 3px; font-family: 'Montserrat', sans-serif; font-size: 9.5px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #a81818;">The Law</p>
+            <p style="margin: 0; font-size: 12.5px; line-height: 1.46;">What the text demands, accuses, exposes.</p>
+          </div>
+          <div style="border-top: 2px solid #2858b8; padding-top: 6px;">
+            <p style="margin: 0 0 3px; font-family: 'Montserrat', sans-serif; font-size: 9.5px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">The Gospel</p>
+            <p style="margin: 0; font-size: 12.5px; line-height: 1.46;">What God gives, promises, does.</p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin: 0 0 4px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">6 · Lesson Step</h3>
+        <p style="margin: 0 0 5px; font-size: 12px; line-height: 1.42;">A 78px minute column against the instruction, hairline above. Every text the step needs is printed inside it, in a tint panel: no page-turning mid-step.</p>
+        <div style="border: 0.5px dashed #88c8d8; padding: 6px;">
+          <div style="display: grid; grid-template-columns: 78px 1fr; gap: 16px; align-items: start; border-top: 0.5px solid #cfe0ea; padding-top: 6px;">
+            <p style="margin: 0; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: #2858b8;">4 · 5 min</p>
+            <div>
+              <p style="margin: 0 0 6px; font-size: 14px; line-height: 1.48;"><strong style="font-weight: 600;">Step title.</strong> Ut enim ad minim veniam.</p>
+              <div style="background: #eef7fa; padding: 8px 11px;">
+                <p style="margin: 0; font-size: 12.5px; line-height: 1.46;">“Duis aute irure dolor.”</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin: 0 0 4px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">7 · Navy Panel and Tint Panel</h3>
+        <p style="margin: 0 0 5px; font-size: 12px; line-height: 1.42;">Navy for the one thing a child should leave with, once per sheet. Tint for anything spoken aloud. Both depend on background graphics at print.</p>
+        <div style="border: 0.5px dashed #88c8d8; padding: 6px; display: grid; gap: 7px;">
+          <div style="background: #082858; color: #fffefb; padding: 10px 13px;">
+            <p style="margin: 0 0 4px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #88c8d8;">Memory Work</p>
+            <p style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-size: 19px; line-height: 1.24;">The verse, at the loudest point on the page.</p>
+          </div>
+          <div style="background: #eef7fa; padding: 8px 11px;">
+            <p style="margin: 0 0 2px; font-family: 'Montserrat', sans-serif; font-size: 9px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: #2858b8;">Opening Prayer</p>
+            <p style="margin: 0; font-size: 12.5px; line-height: 1.46;">Printed where it is said.</p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin: 0 0 4px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">8 · Checkbox List and Writing Rules</h3>
+        <p style="margin: 0 0 5px; font-size: 12px; line-height: 1.42;">Light-blue □ for anything a teacher gathers. Ruled lines in <span style="font-family: 'Montserrat', sans-serif; font-size: 12px;">9fb2c9</span>, 12–14px apart, one per answer the activity asks for.</p>
+        <div style="border: 0.5px dashed #88c8d8; padding: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <ul style="margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 13px; line-height: 1.4;">
+            <li style="display: flex; gap: 8px;"><span style="color: #88c8d8;">□</span><span>Student handouts</span></li>
+            <li style="display: flex; gap: 8px;"><span style="color: #88c8d8;">□</span><span>Pencils</span></li>
+            <li style="display: flex; gap: 8px;"><span style="color: #88c8d8;">□</span><span>Crayons</span></li>
+          </ul>
+          <div style="display: grid; gap: 5px;">
+            <span style="border-bottom: 0.5px solid #9fb2c9; height: 14px;"></span>
+            <span style="border-bottom: 0.5px solid #9fb2c9; height: 14px;"></span>
+            <span style="border-bottom: 0.5px solid #9fb2c9; height: 14px;"></span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin: 0 0 4px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">9 · Artwork Panel and Footer</h3>
+        <p style="margin: 0 0 5px; font-size: 12px; line-height: 1.42;">Foot of the student rail: 168px tall, <code style="font-family: 'Montserrat', sans-serif; font-size: 12px;">object-fit: cover</code>, hairline border, 8px credit beneath. Footer is Montserrat 9px over a hairline, pinned to the sheet foot; the credit line prints once per document at 8.5px.</p>
+        <div style="border: 0.5px dashed #88c8d8; padding: 6px; display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: end;">
+          <figure style="margin: 0; display: flex; flex-direction: column; gap: 4px;">
+            <div data-slot="artwork" style="display: block; width: 100%; height: 58px; background: #eef7fa; border: 0.5px solid #88c8d8;"></div>
+            <figcaption style="font-family: 'Montserrat', sans-serif; font-size: 8px; line-height: 1.4; letter-spacing: 0.06em; text-transform: uppercase; color: #5c5c54;">Artist · Year</figcaption>
+          </figure>
+          <div style="border-top: 0.5px solid #88c8d8; padding-top: 6px; display: flex; justify-content: space-between; gap: 12px; font-family: 'Montserrat', sans-serif; font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: #5c5c54;">
+            <span>Piece · Date</span><span>Page n of m</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer style="border-top: 0.5px solid #88c8d8; margin-top: auto; padding-top: 7px; display: flex; justify-content: space-between; gap: 16px; font-family: 'Montserrat', sans-serif; font-size: 9px; line-height: 1.5; letter-spacing: 0.06em; text-transform: uppercase; color: #5c5c54;">
+      <span>Design Standard · St. Paul Sunday School</span>
+      <span>Page 2 of 3</span>
+    </footer>
+  </div>
+</section>
+
+<section class="page" data-screen-label="03" style="font-family: 'Source Serif 4', Georgia, serif; color: #1c1c19; background: #fffefb; box-sizing: border-box;">
+  <div style="padding: 0.4in 0.55in 0.34in; height: 100%; box-sizing: border-box; display: flex; flex-direction: column;">
+
+    <header style="display: flex; justify-content: space-between; align-items: baseline; gap: 20px; border-bottom: 1px solid #082858; padding-bottom: 8px; margin-bottom: 13px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-family: 'Montserrat', sans-serif; font-size: 9.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #082858;">St. Paul Sunday School</span>
+        <span style="background: #082858; color: #fffefb; padding: 3px 8px; font-family: 'Montserrat', sans-serif; font-size: 9.5px; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase;">Design Standard</span>
+      </div>
+      <p style="margin: 0; font-family: 'Montserrat', sans-serif; font-size: 9px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: #5c5c54;">Skeletons and rules</p>
+    </header>
+
+    <h2 style="margin: 0 0 3px; font-family: 'Instrument Serif', Georgia, serif; font-size: 30px; font-weight: 400; line-height: 1; color: #082858; flex: none;">Three Skeletons</h2>
+    <p style="margin: 0 0 11px; font-size: 13px; line-height: 1.45; color: #5c5c54; flex: none;">Any new handout is one of these three. A new level changes the chip and the Level Question, never the layout.</p>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 22px; margin-bottom: 14px; flex: none;">
+
+      <div>
+        <h3 style="margin: 0 0 6px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">Teacher’s Guide · 3pp</h3>
+        <div style="display: flex; gap: 5px; margin-bottom: 7px;">
+          <div style="width: 52px; height: 67px; border: 0.5px solid #88c8d8; padding: 3px; display: flex; flex-direction: column; gap: 2px;">
+            <div style="height: 11px; background: #082858;"></div>
+            <div style="flex: 1; display: flex; gap: 2px;"><div style="width: 32%; background: #eef7fa;"></div><div style="flex: 1; background: #f4f8fa;"></div></div>
+          </div>
+          <div style="width: 52px; height: 67px; border: 0.5px solid #88c8d8; padding: 3px; display: flex; flex-direction: column; gap: 2px;">
+            <div style="height: 4px; background: #2858b8;"></div>
+            <div style="height: 26px; display: flex; gap: 2px;"><div style="flex: 1; background: #f4f8fa;"></div><div style="flex: 1; background: #f4f8fa;"></div></div>
+            <div style="flex: 1; display: flex; gap: 2px;"><div style="flex: 1.3; background: #f4f8fa;"></div><div style="flex: 1; background: #f4f8fa;"></div></div>
+          </div>
+          <div style="width: 52px; height: 67px; border: 0.5px solid #88c8d8; padding: 3px; display: flex; flex-direction: column; gap: 2px;">
+            <div style="height: 4px; background: #2858b8;"></div>
+            <div style="height: 7px; background: #eef7fa;"></div>
+            <div style="height: 7px; background: #f4f8fa;"></div>
+            <div style="height: 7px; background: #eef7fa;"></div>
+            <div style="height: 7px; background: #f4f8fa;"></div>
+            <div style="flex: 1; background: #eef7fa;"></div>
+          </div>
+        </div>
+        <p style="margin: 0; font-size: 13px; line-height: 1.48;">Page 1 prep: rail of What You Need, Time Today, The Text, This Week in the Room, against For the Teacher, Law and Gospel, Memory Work. Page 2 the Gospel in full plus What Children Ask (Discussion Guardrails for the older rooms) beside the Catechism. Page 3 The Lesson, every text inline.</p>
+      </div>
+
+      <div>
+        <h3 style="margin: 0 0 6px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">Student Handout · 1–2pp</h3>
+        <div style="display: flex; gap: 5px; margin-bottom: 7px;">
+          <div style="width: 52px; height: 67px; border: 0.5px solid #88c8d8; padding: 3px; display: flex; flex-direction: column; gap: 2px;">
+            <div style="height: 11px; background: #082858;"></div>
+            <div style="flex: 1; display: flex; gap: 2px;">
+              <div style="width: 32%; display: flex; flex-direction: column; gap: 2px;"><div style="flex: 1; background: #f4f8fa;"></div><div style="height: 14px; background: #88c8d8;"></div></div>
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 2px;"><div style="flex: 1; background: #f4f8fa;"></div><div style="height: 9px; background: #082858;"></div><div style="height: 12px; background: #f4f8fa;"></div></div>
+            </div>
+          </div>
+        </div>
+        <p style="margin: 0; font-size: 13px; line-height: 1.48;">Rail of hymn stanza, Catechism, the Collect, then the artwork panel. Main column the Gospel in full, the navy Memory Work panel, then the week’s activities side by side over ruled lines. One page is the default; take a second page rather than crowd the sheet.</p>
+      </div>
+
+      <div>
+        <h3 style="margin: 0 0 6px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">Family Take-Home · 2pp</h3>
+        <div style="display: flex; gap: 5px; margin-bottom: 7px;">
+          <div style="width: 52px; height: 67px; border: 0.5px solid #88c8d8; padding: 3px; display: flex; flex-direction: column; gap: 2px;">
+            <div style="height: 11px; background: #082858;"></div>
+            <div style="height: 9px; background: #eef7fa;"></div>
+            <div style="flex: 1; display: flex; gap: 2px;"><div style="flex: 1; background: #f4f8fa;"></div><div style="flex: 1; background: #f4f8fa;"></div></div>
+          </div>
+          <div style="width: 52px; height: 67px; border: 0.5px solid #88c8d8; padding: 3px; display: flex; flex-direction: column; gap: 2px;">
+            <div style="height: 4px; background: #2858b8;"></div>
+            <div style="height: 24px; display: flex; gap: 2px;"><div style="flex: 1; background: #f4f8fa;"></div><div style="flex: 1; background: #f4f8fa;"></div></div>
+            <div style="flex: 1; display: flex; gap: 2px;"><div style="flex: 1; background: #082858;"></div><div style="flex: 1; background: #f4f8fa;"></div><div style="flex: 1; background: #f4f8fa;"></div></div>
+          </div>
+        </div>
+        <p style="margin: 0; font-size: 13px; line-height: 1.48;">No rail. Page 1 runs the Theme Line beside the week’s verse, the same-Gospel paragraph, all six Level Questions in a bounded band, then What They Heard in two flowing columns. Page 2 is A Word for the Parents over a three-column band of the week’s helps.</p>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1.25fr 1fr; gap: 26px; flex: none;">
+      <div>
+        <h2 style="margin: 0 0 7px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">Standing Rules</h2>
+        <div style="display: grid; gap: 6px; font-size: 13.5px; line-height: 1.5;">
+          <p style="margin: 0;"><strong style="font-weight: 600;">The content is verbatim.</strong> Format it; never rewrite, tighten, or paraphrase what the week supplies.</p>
+          <p style="margin: 0;"><strong style="font-weight: 600;">Levels differ by name, never by layout.</strong> Same skeleton, same rail, same order of blocks, whatever the age of the room.</p>
+          <p style="margin: 0;"><strong style="font-weight: 600;">A teacher never hunts for a text.</strong> Every prayer, stanza, recitation, verse and benediction prints inline at the step where it is spoken, even when that means printing it twice in one document.</p>
+          <p style="margin: 0;"><strong style="font-weight: 600;">Nothing internal reaches a volunteer’s sheet.</strong> No specification references, no production notes, no editorial apparatus.</p>
+          <p style="margin: 0;"><strong style="font-weight: 600;">Body ink is never navy.</strong> Navy is for display type, chips, and solid panels only.</p>
+          <p style="margin: 0;"><strong style="font-weight: 600;">Nothing a room does not do.</strong> A level without a Catechism Recitation carries no sidebar sentence promising one.</p>
+        </div>
+      </div>
+
+      <div style="border-left: 0.5px solid #88c8d8; padding-left: 24px;">
+        <h2 style="margin: 0 0 7px; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: #2858b8;">Before It Prints</h2>
+        <p style="margin: 0 0 7px; font-size: 13.5px; line-height: 1.5;">Every page must report zero overflow. The page box clips; it does not reflow, so a page that runs long loses its footer silently.</p>
+        <div style="background: #eef7fa; padding: 9px 11px; margin-bottom: 8px;">
+          <p style="margin: 0 0 2px; font-family: 'Montserrat', sans-serif; font-size: 9px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: #2858b8;">When a page runs long, trim in this order</p>
+          <p style="margin: 0; font-size: 12.5px; line-height: 1.46;">Sidebar gaps, then body size by 0.5px, then the artwork panel, then move a whole block to the page with room. Never take the Gospel below 12px.</p>
+        </div>
+        <p style="margin: 0; font-size: 13.5px; line-height: 1.5;">Export per file, or the whole 24-page set from the weekly packet. Scale 100%, margins default, <strong style="font-weight: 600;">background graphics on</strong>.</p>
+      </div>
+    </div>
+
+    <footer style="border-top: 0.5px solid #88c8d8; margin-top: auto; padding-top: 7px; display: grid; gap: 6px; font-family: 'Montserrat', sans-serif; font-size: 9px; line-height: 1.5; letter-spacing: 0.06em; color: #5c5c54;">
+      <div style="display: flex; justify-content: space-between; gap: 16px; text-transform: uppercase;"><span>Design Standard · St. Paul Sunday School</span><span>Page 3 of 3</span></div>
+      <p style="margin: 0; font-size: 8.5px; letter-spacing: 0.04em; line-height: 1.5;">Specimen text is Latin filler. This document carries no Scripture, hymn, or curriculum text; those belong to the week and live with the content, not with the design.</p>
+    </footer>
+  </div>
+</section>
+
+</doc-page>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;seasonColor&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#2e6b4b&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;#2e6b4b&quot;,&quot;#a81818&quot;,&quot;#5b3f8c&quot;,&quot;#082858&quot;,&quot;#c9a227&quot;],&quot;section&quot;:&quot;Church year&quot;}}">
+class Component extends DCLogic {
+  componentDidMount() {
+    const kick = () => {
+      const el = document.querySelector('doc-page');
+      if (el && typeof el._measure === 'function') { try { el._measure(); } catch (e) {} }
+    };
+    requestAnimationFrame(kick);
+    [0, 120, 600, 1500].forEach(function (t) { setTimeout(kick, t); });
+  }
+  renderVals() {
+    return { seasonColor: this.props.seasonColor ?? '#2e6b4b' };
+  }
+}
+</script>
+</body>
+</html>

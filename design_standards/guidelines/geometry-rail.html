@@ -1,0 +1,29 @@
+<!-- @dsCard group="Spacing" viewport="700x175" name="The rail frame" subtitle="1 : minmax(0, 2.05), 26px gutter, hairline between" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 14px; background: var(--surface-page); font-family: var(--font-body); color: var(--text-body); }
+  p { margin: 0; }
+  .sw { display: flex; align-items: center; gap: 9px; }
+  .box { width: 30px; height: 18px; flex: none; }
+  .hex { font-family: var(--font-label); font-size: var(--size-meta); letter-spacing: 0.06em; color: var(--text-meta); }
+  .use { font-size: 13px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 22px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 20px; }
+</style>
+</head>
+<body>
+<div style="display: grid; grid-template-columns: var(--grid-rail); gap: var(--grid-gutter); align-items: start;">
+  <div style="border-right: var(--rule-hair) solid var(--border-hairline); padding-right: var(--rail-pad);">
+    <p style="font-family: var(--font-label); font-size: var(--size-label); font-weight: var(--weight-label); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-label); margin-bottom: 5px;">Reference rail</p>
+    <p style="font-size: var(--size-body-sm); line-height: var(--lh-body);">Fixed helps: what you need, the hymn, the Catechism, the prayer, the artwork. What a teacher reaches for, not what they read through.</p>
+  </div>
+  <div>
+    <p style="font-family: var(--font-label); font-size: var(--size-label); font-weight: var(--weight-label); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-label); margin-bottom: 5px;">The week’s substance</p>
+    <p style="font-size: var(--size-body); line-height: var(--lh-body);">The Gospel, the exposition, the lesson, the activities. This column changes every week; the rail barely moves.</p>
+  </div>
+</div></body>
+</html>

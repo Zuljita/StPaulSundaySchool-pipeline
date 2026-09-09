@@ -1,0 +1,36 @@
+<!-- @dsCard group="Spacing" viewport="700x200" name="Page box and margins" subtitle="816 × 1056 px, fixed. The box clips; it does not reflow." -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 14px; background: var(--surface-page); font-family: var(--font-body); color: var(--text-body); }
+  p { margin: 0; }
+  .sw { display: flex; align-items: center; gap: 9px; }
+  .box { width: 30px; height: 18px; flex: none; }
+  .hex { font-family: var(--font-label); font-size: var(--size-meta); letter-spacing: 0.06em; color: var(--text-meta); }
+  .use { font-size: 13px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 22px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 20px; }
+</style>
+</head>
+<body>
+<div style="display: flex; gap: 26px; align-items: flex-start;">
+  <div>
+    <div style="width: 106px; height: 137px; border: var(--rule-hair) solid var(--border-hairline); box-sizing: border-box; padding: 7px 9px 6px; display: flex; flex-direction: column; background: var(--surface-page);">
+      <div style="height: 14px; background: var(--surface-solid);"></div>
+      <div style="flex: 1; margin-top: 4px; background: #f4f8fa;"></div>
+      <div style="border-top: var(--rule-hair) solid var(--border-hairline); margin-top: 4px; height: 6px;"></div>
+    </div>
+    <p style="margin-top: 5px;" class="hex">816 × 1056</p>
+  </div>
+  <div style="display: grid; gap: 5px; font-size: 13px; line-height: var(--lh-body-tight);">
+    <p><span class="hex">0.4in</span> &nbsp;top margin</p>
+    <p><span class="hex">0.55in</span> &nbsp;side margins</p>
+    <p><span class="hex">0.34in</span> &nbsp;foot margin</p>
+    <p><span class="hex">0.34 / 0.55 / 0.3</span> &nbsp;lesson pages</p>
+    <p style="margin-top: 4px; color: var(--text-secondary);">Every page must report zero overflow before it prints.</p>
+  </div>
+</div></body>
+</html>

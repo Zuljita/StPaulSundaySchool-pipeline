@@ -1,0 +1,28 @@
+<!-- @dsCard group="Colors" viewport="700x130" name="Ink" subtitle="Body text is near-black, never navy — navy prints visibly blue" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 14px; background: var(--surface-page); font-family: var(--font-body); color: var(--text-body); }
+  p { margin: 0; }
+  .sw { display: flex; align-items: center; gap: 9px; }
+  .box { width: 30px; height: 18px; flex: none; }
+  .hex { font-family: var(--font-label); font-size: var(--size-meta); letter-spacing: 0.06em; color: var(--text-meta); }
+  .use { font-size: 13px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 22px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 20px; }
+</style>
+</head>
+<body>
+<div class="grid3" style="margin-bottom: 10px;">
+  <div class="sw"><span class="box" style="background: var(--ink);"></span><span class="hex">1c1c19</span><span class="use">Body</span></div>
+  <div class="sw"><span class="box" style="background: var(--ink-secondary);"></span><span class="hex">3b3b36</span><span class="use">Secondary</span></div>
+  <div class="sw"><span class="box" style="background: var(--ink-muted);"></span><span class="hex">5c5c54</span><span class="use">Meta, footers</span></div>
+</div>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 22px; border-top: var(--rule-hair) solid var(--border-hairline-soft); padding-top: 8px;">
+  <p style="font-size: 13.5px; line-height: var(--lh-body); color: var(--ink);">Set in 1c1c19. Reads black on paper.</p>
+  <p style="font-size: 13.5px; line-height: var(--lh-body); color: var(--navy);">Set in navy. Reads blue on paper — never do this at body size.</p>
+</div></body>
+</html>
