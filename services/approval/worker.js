@@ -15,10 +15,9 @@
  *   2. Read the curriculum. The data repository is private and stays
  *      private, so review content is proxied here to authenticated
  *      reviewers rather than published.
- *   3. Sign an approval. The Ed25519 private key lives in this Worker's
- *      secret store and nowhere else. That is what makes an approval mean
- *      "a verified reviewer approved these bytes" rather than "someone
- *      could write JSON into a repository".
+ *   3. Write the approval. The GitHub token lives in this Worker's secret
+ *      store, so recording a decision needs no GitHub account and no write
+ *      access to the curriculum of the reviewer's own.
  *
  * WHAT IT DELIBERATELY DOES NOT DO
  *
@@ -37,7 +36,6 @@
  *   POST /api/approve      record a decision
  *
  * SECRETS (wrangler secret put ...)
- *   APPROVAL_SIGNING_KEY   Ed25519 private key, PKCS8 PEM, from tools/keygen.py
  *   GITHUB_TOKEN           write access to the data repository only
  *
  * VARS (wrangler.toml)
@@ -234,38 +232,6 @@ function parseRoster(yamlText) {
 }
 
 // ---------------------------------------------------------------------
-// Signing
-// ---------------------------------------------------------------------
-
-// Must match SIGNED_FIELDS and payload() in tools/stpaul/signing.py.
-const SIGNED_FIELDS = [
-  "sunday", "reviewer", "verified_identity", "role", "decision",
-  "content_sha256", "at",
-];
-
-function signingPayload(review, sunday) {
-  const data = { sunday };
-  for (const f of SIGNED_FIELDS) {
-    if (f === "sunday") continue;
-    data[f] = String(review[f] ?? "");
-  }
-  // Canonical JSON: sorted keys, no spaces. Python's json.dumps with
-  // sort_keys and the compact separators produces the same bytes.
-  const keys = Object.keys(data).sort();
-  return enc.encode("{" + keys.map(
-    (k) => `${JSON.stringify(k)}:${JSON.stringify(data[k])}`).join(",") + "}");
-}
-
-async function signReview(review, sunday, pem) {
-  const body = pem.replace(/-----(BEGIN|END) PRIVATE KEY-----/g, "").replace(/\s+/g, "");
-  const key = await crypto.subtle.importKey(
-    "pkcs8", b64urlToBytes(body), { name: "Ed25519" }, false, ["sign"]
-  );
-  const sig = await crypto.subtle.sign("Ed25519", key, signingPayload(review, sunday));
-  return "ed25519:" + bytesToB64(new Uint8Array(sig));
-}
-
-// ---------------------------------------------------------------------
 // Request handling
 // ---------------------------------------------------------------------
 
@@ -382,9 +348,7 @@ async function handleApprove(request, env, origin) {
     github: "",
     method: "google",
     verified_identity: `google:${identity.email}`,
-    signature: "",
   };
-  review.signature = await signReview(review, slug, env.APPROVAL_SIGNING_KEY);
 
   const path = `approvals/${slug}.approval.json`;
   const existing = await ghGet(env, path);
@@ -401,8 +365,8 @@ async function handleApprove(request, env, origin) {
     `${decision === "approved" ? "Approve" : "Request changes on"} ${slug}` +
     `\n\nReviewer: ${entry.name} <${identity.email}> (${entry.role})\n` +
     `Content: ${contentHash}\n` +
-    `Recorded by the approval service; signature verifies against ` +
-    `standards/approval-key.pub.\n`
+    `Recorded by the approval service, which verified the reviewer's ` +
+    `Google identity against standards/reviewers.yml.\n`
   );
 
   return json({ ok: true, decision, reviewer: entry.name,

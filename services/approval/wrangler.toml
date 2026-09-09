@@ -2,7 +2,12 @@ name = "stpaul-approval"
 main = "worker.js"
 compatibility_date = "2026-01-01"
 
-# Ed25519 signing needs Node-compatible crypto in the Workers runtime.
+# Retained, though nothing now requires it: it was here for Ed25519 in the
+# Workers runtime, and the approval signing that needed it is gone. Every
+# API the Worker still uses (fetch, WebCrypto verify for Google's tokens,
+# atob/btoa, TextEncoder) is standard. Dropping the flag is a runtime
+# change to a service a reviewer depends on, so it is left for a commit
+# that can watch the deploy rather than folded into this one.
 compatibility_flags = ["nodejs_compat"]
 
 # The review app is bundled into the Worker as text and served from "/".
@@ -58,5 +63,4 @@ ALLOWED_HD = "stpaulaustin.org"
 
 # --- secrets, never in git -----------------------------------------------
 #
-#   npx wrangler secret put APPROVAL_SIGNING_KEY   # from tools/keygen.py
 #   npx wrangler secret put GITHUB_TOKEN           # write to DATA_REPO only

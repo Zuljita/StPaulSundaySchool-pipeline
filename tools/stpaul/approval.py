@@ -25,7 +25,6 @@ from pathlib import Path
 import yaml
 
 from .hashing import ALGORITHM, content_hash
-from .signing import read_public_key, verify_review
 from .model import APPROVALS_DIR, CONTENT_DIR, STANDARDS_DIR
 
 APPROVED = "approved"
@@ -48,12 +47,11 @@ class Review:
     note: str = ""
     github: str = ""
     # How the reviewer's identity was established. "google" comes from the
-    # approval service, which verified a Google ID token before signing.
-    # "local-cli" means someone ran tools/approve.py, which proves only
-    # that they could run the command.
+    # approval service, which verified a Google ID token against Google's
+    # key set. "local-cli" means someone ran tools/approve.py, which proves
+    # only that they could run the command.
     method: str = "local-cli"
     verified_identity: str = ""
-    signature: str = ""
 
     @classmethod
     def new(cls, reviewer: str, role: str, decision: str,
@@ -181,27 +179,6 @@ def verify(slug: str, *,
         if r.get("decision") == APPROVED and r.get("content_sha256") == digest
     ]
 
-    # A signature is what separates "someone wrote this JSON" from "a
-    # verified reviewer approved these bytes". When the policy requires
-    # one, an unsigned or badly signed review is not an approval.
-    unsigned: list[str] = []
-    if policy.get("require_signed_approvals"):
-        public_key = read_public_key(standards_dir)
-        if not public_key:
-            return Verification(
-                status=INSUFFICIENT, slug=slug, current_hash=digest,
-                approved_hash=approved_hash, required=required,
-                detail="Policy requires signed approvals, but "
-                       "standards/approval-key.pub is missing. No approval can "
-                       "be verified until the public key is committed.",
-            )
-        checked = []
-        for r in valid:
-            if verify_review(r, slug, public_key):
-                checked.append(r)
-            else:
-                unsigned.append(f"{r.get('reviewer','?')} ({r.get('method','?')})")
-        valid = checked
     # A later "changes requested" from the same reviewer at the same hash
     # withdraws their approval.
     rejected_by = {
@@ -223,8 +200,6 @@ def verify(slug: str, *,
             bits.append(f"{len(valid)} of {required} required approvals")
         if missing_roles:
             bits.append(f"missing required role(s): {', '.join(sorted(missing_roles))}")
-        if unsigned:
-            bits.append(f"rejected as unsigned or badly signed: {', '.join(unsigned)}")
         return Verification(
             status=INSUFFICIENT, slug=slug, current_hash=digest, approved_hash=approved_hash,
             approving_reviews=valid, required=required,
