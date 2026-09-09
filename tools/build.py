@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Render approved content into handouts and the app export.
+"""Render approved content into handouts, the web site and the app export.
 
     python tools/build.py 2026-09-20-trinity-16
     python tools/build.py --all
@@ -8,8 +8,13 @@
 This is the part of the pipeline below the freeze line. It does not call
 a language model, a network service, or anything with an opinion. It is a
 pure function of the approved bytes, which is what makes the printed
-handouts and the app export the same text rather than two independent
-retellings of it.
+handouts, the public site and the app export the same text rather than
+independent retellings of it.
+
+The site is rendered here, in this pass, for that reason. An export
+handed to another system to re-derive is how the handouts and the app
+came to disagree; a renderer cannot disagree with its siblings, because
+there is only one parse.
 
 By default it refuses to build a Sunday whose content is not currently
 approved. --draft builds anyway, into dist-draft/, with DRAFT in every
@@ -32,9 +37,28 @@ if hasattr(sys.stdout, "reconfigure"):      # Windows consoles default to cp1252
 
 from stpaul.approval import verify
 from stpaul.hashing import ALGORITHM, content_hash
-from stpaul.model import CONTENT_DIR, DIST_DIR, REPO_ROOT, all_sundays, load_lesson, load_rules
-from stpaul.render import appexport, docx_render, handoff, pdf_render
+from stpaul.model import (CONTENT_DIR, DATA_ROOT, DIST_DIR, REPO_ROOT, all_sundays,
+                          load_lesson, load_rules)
+from stpaul.render import appexport, docx_render, handoff, pdf_render, site
 from stpaul.rules import check_lesson, summarize
+
+
+def shown_path(path: Path) -> str:
+    """A path to print, relative to whichever root actually contains it.
+
+    A release is written under the data root and a draft under the
+    pipeline root, so neither one is reliably inside the other. Making
+    every path relative to the pipeline root raised ValueError on every
+    real build with $STPAUL_DATA pointing at a separate checkout, which
+    is the documented layout: the files were all written, and then the
+    line reporting them threw and the build read as ERROR.
+    """
+    for root in (DATA_ROOT, REPO_ROOT):
+        try:
+            return path.relative_to(root).as_posix()
+        except ValueError:
+            continue
+    return path.as_posix()
 
 
 def build_one(slug: str, *, draft: bool, skip_pdf: bool = False) -> tuple[bool, str]:
@@ -58,6 +82,7 @@ def build_one(slug: str, *, draft: bool, skip_pdf: bool = False) -> tuple[bool, 
     written: list[Path] = []
     written += handoff.write(lesson, out_dir, digest)
     written += appexport.write(lesson, out_dir, digest)
+    written += site.write(lesson, out_dir, digest, draft=draft)
 
     handouts = out_dir / "handouts"
     for piece in lesson.pieces:
@@ -90,7 +115,7 @@ def build_one(slug: str, *, draft: bool, skip_pdf: bool = False) -> tuple[bool, 
     lines = [
         f"{'DRAFT   ' if draft else 'BUILT   '}{slug}",
         f"         source {digest}",
-        f"         {len(written)} file(s) -> {out_dir.relative_to(REPO_ROOT).as_posix()}/",
+        f"         {len(written)} file(s) -> {shown_path(out_dir)}/",
     ]
     if draft and not v.ok:
         lines.append(f"         NOT APPROVED ({v.status}). Proof only, do not distribute.")

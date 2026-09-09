@@ -1,0 +1,104 @@
+name: deploy site worker
+
+# Ships services/site to Cloudflare. This deploys the Worker and nothing
+# else: no page, no lesson, no handout. Everything the site serves lives
+# in R2 and is put there by `tools/publish_site.py` plus
+# `services/site/publish.ps1`, run by whoever holds the private data
+# repository.
+#
+# That split is deliberate and it is the reason this workflow can exist in
+# a public repository at all. A deploy needs no curriculum, so this job
+# never checks out content; and publishing a Sunday needs no deploy, so
+# nobody has to hold Cloudflare credentials to put a lesson up.
+#
+# The one secret this needs is a Cloudflare API token with Edit
+# Cloudflare Workers on the account, set as CLOUDFLARE_API_TOKEN in the
+# repository settings. Add CLOUDFLARE_ACCOUNT_ID as well if the token can
+# see more than one account, since wrangler will not guess between them.
+#
+# The R2 bucket named in wrangler.toml must exist before the first
+# deploy: `npx wrangler r2 bucket create stpaul-sundayschool`.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/site/**"
+      - ".github/workflows/deploy-site.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-site-worker
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install
+        run: pip install --quiet pyyaml python-docx reportlab pypdf
+
+      - name: Tests
+        # Run before shipping. test_site.py is the reason: it holds the
+        # site renderer to determinism and to escaping every string that
+        # comes out of content/. A public origin is the wrong place to
+        # find out that one of those slipped.
+        env:
+          STPAUL_DATA: /nonexistent
+        run: python -m unittest discover -s tools/tests
+
+      - name: Deploy
+        working-directory: services/site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy
+
+      - name: Check it is actually serving
+        working-directory: services/site
+        # The hostname is read out of wrangler.toml rather than written
+        # again here, so there is no second copy to drift from the route
+        # the deploy just published.
+        run: |
+          host=$(sed -n 's/^pattern *= *"\(.*\)"/\1/p' wrangler.toml | head -1)
+          if [ -z "$host" ]; then
+            echo "No route pattern in wrangler.toml; skipping the check."
+            exit 0
+          fi
+          echo "Checking https://$host"
+
+          for attempt in 1 2 3 4 5; do
+            code=$(curl -s -o /tmp/site.html -w "%{http_code}" "https://$host/" || true)
+            # 404 is a correct answer from an empty bucket: the Worker is
+            # up and nothing has been published yet.
+            case "$code" in 200|404) break ;; esac
+            echo "  attempt $attempt: HTTP $code, retrying"
+            sleep 5
+          done
+
+          case "$code" in
+            200) echo "Serving." ;;
+            404) echo "Serving; the bucket is empty. Publish with tools/publish_site.py." ;;
+            *)   echo "The site did not come back: HTTP $code."; exit 1 ;;
+          esac
+
+          # The pages carry no script, and the header that says so is a
+          # real control rather than decoration. Assert it, rather than
+          # assume a deploy could not have dropped it.
+          csp=$(curl -s -o /dev/null -D - "https://$host/" \
+                | tr -d '\r' | sed -n 's/^[Cc]ontent-[Ss]ecurity-[Pp]olicy: //p')
+          case "$csp" in
+            *"default-src 'none'"*) echo "Content-Security-Policy is set." ;;
+            *) echo "Content-Security-Policy missing or weakened: '$csp'"; exit 1 ;;
+          esac

@@ -24,6 +24,7 @@ from docx.shared import Inches, Pt, RGBColor
 
 from ..model import Lesson, Piece
 from . import brand
+from .blocks import blocks
 from .handoff import piece_heading
 
 INLINE = re.compile(r"(\*\*.+?\*\*|\*.+?\*)")
@@ -153,7 +154,7 @@ def render(lesson: Lesson, piece: Piece, source_hash: str, out_path: Path) -> Pa
 
     for section in piece.sections:
         _section_bar(doc, section.heading, palette)
-        for block in _blocks(section.body):
+        for block in blocks(section.body):
             kind, text = block
             if kind == "rule":
                 continue  # §6: no horizontal rules, ever.
@@ -192,22 +193,3 @@ def render(lesson: Lesson, piece: Piece, source_hash: str, out_path: Path) -> Pa
     out_path.parent.mkdir(parents=True, exist_ok=True)
     doc.save(str(out_path))
     return out_path
-
-
-def _blocks(body: str):
-    """Split a section body into typed blocks for the renderer."""
-    for raw in re.split(r"\n\s*\n", body):
-        block = raw.strip()
-        if not block:
-            continue
-        if re.fullmatch(r"-{3,}|\*{3,}|_{3,}", block):
-            yield ("rule", block)
-        elif block.startswith("> "):
-            yield ("scripture", "\n".join(l[2:] for l in block.splitlines()))
-        elif block.startswith(("- ", "* ", "☐ ")):
-            for line in block.splitlines():
-                yield ("bullet", re.sub(r"^[-*☐]\s+", "", line))
-        elif block.startswith("### "):
-            yield ("subhead", block[4:])
-        else:
-            yield ("body", block)

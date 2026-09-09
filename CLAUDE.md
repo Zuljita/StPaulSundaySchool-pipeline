@@ -83,4 +83,5 @@ python -m unittest discover -s tools\tests   # no data repo needed
 python tools\lint.py --baseline
 python tools\verify.py
 python tools\build.py <sunday>
+python tools\publish_site.py                 # stage the public site for R2
 ```

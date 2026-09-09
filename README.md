@@ -53,8 +53,12 @@ content/<sunday>/          source of truth, in the data repo
      |
      |  tools/build.py         deterministic. no model runs below here.
      v
-dist/<sunday>/   handoff .md · 12 .docx · 12 .pdf · app export
-                 every output stamped with the same source_sha256
+dist/<sunday>/   handoff .md · 12 .docx · 12 .pdf · web site · app export
+     |           every output stamped with the same source_sha256
+     |
+     |  tools/publish_site.py  re-checks the hash and the approval
+     v
+r2://stpaul-sundayschool     the public site, served by services/site
 ```
 
 **The gate.** An approval is a statement about *specific bytes*, recorded
@@ -68,8 +72,16 @@ Google's key set and checks the address against
 `standards/reviewers.yml`, so an approval names an account that actually
 authenticated rather than a name someone typed.
 
-**Sync.** Handouts and app export are produced in one run from one parse
-of one approved input. "Are they in sync?" is a string comparison.
+**Sync.** Handouts, web site and app export are produced in one run from
+one parse of one approved input. "Are they in sync?" is a string
+comparison.
+
+**The site is a renderer, not an export.** An export is handed to another
+system that re-derives a reading of it, which is how the handouts and the
+app came to disagree in the first place. `render/site.py` runs beside the
+DOCX and the PDF over the same parse, so there is no second derivation
+left to drift, and all three read one shared block parser rather than
+three copies of it.
 
 **Rules as data.** `rules.yml` in the data repo holds the enforceable
 subset of the standards, each rule citing the document and section it
@@ -87,12 +99,13 @@ $env:STPAUL_DATA = "D:\dev\StPaulSundaySchool"    # PowerShell
 ```
 
 ```bash
-python -m unittest discover -s tools/tests   # 50 tests, no data repo needed
+python -m unittest discover -s tools/tests   # 88 tests, no data repo needed
 python tools/lint.py                         # rules vs content
 python tools/lint.py --baseline              # only NEW violations (what CI runs)
 python tools/verify.py                       # still what was approved?
 python tools/build.py <sunday>               # refuses unless approved
 python tools/build.py <sunday> --draft       # watermarked proof
+python tools/publish_site.py                 # stage the public site for R2
 ```
 
 The data repository is found via `$STPAUL_DATA`, else a sibling checkout,
@@ -106,11 +119,12 @@ touch real content.
 | Path | |
 |---|---|
 | `tools/stpaul/` | model, rule engine, canonical hashing, approval gate |
-| `tools/stpaul/render/` | brand constants, handoff, DOCX, PDF, app export |
+| `tools/stpaul/render/` | brand constants, block parser, handoff, DOCX, PDF, site, app export |
 | `tools/*.py` | the CLI: lint, verify, approve, build, importers, audits |
-| `tools/tests/` | 57 tests, with fixture data |
+| `tools/tests/` | 88 tests, with fixture data |
 | `review/` | the review app, bundled into the Worker at deploy |
 | `services/approval/` | Cloudflare Worker: serves the app, Google sign-in, commit |
+| `services/site/` | Cloudflare Worker: serves the public site out of R2 |
 
 | Tool | |
 |---|---|
@@ -118,7 +132,8 @@ touch real content.
 | `verify.py` | Does content still match its approval? |
 | `history.py` | Who approved what, when, and whether it still applies. |
 | `approve.py` | Record a review locally. Unsigned; for development. |
-| `build.py` | Render handoff, DOCX, PDF and app export. Refuses unapproved. |
+| `build.py` | Render handoff, DOCX, PDF, web site and app export. Refuses unapproved. |
+| `publish_site.py` | Stage the site for R2. Re-checks hash and approval; skips drafts. |
 | `make_review.py` | Build the data the review app and the service read. |
 | `import_legacy.py` | Lift produced DOCX into content. Copies, never rewrites. |
 | `import_app.py` | Recover content from a Base44 app export. |
@@ -126,6 +141,29 @@ touch real content.
 | `drift.py` | App vs handouts, piece by piece. |
 | `scripture_audit.py` | Verse counts against publisher permission limits. |
 | `fetch_app.py` | Snapshot what the live app is serving. |
+
+---
+
+## Setting up the public site
+
+The site is open to everyone: no sign-in, no roster. It is served from
+R2 by `services/site`, on a hostname of its own.
+
+```powershell
+npx wrangler r2 bucket create stpaul-sundayschool
+python tools\build.py --all
+python tools\publish_site.py
+pwsh services\site\publish.ps1 -Staged "D:\dev\StPaulSundaySchool\dist-site"
+```
+
+The Worker and the content deploy separately and on purpose: deploying
+needs no curriculum, and publishing a Sunday needs no Cloudflare
+credentials. Full walkthrough in `services/site/README.md`.
+
+Nothing unapproved can reach it. `build.py` will not render a Sunday
+that is not approved, and `publish_site.py` re-checks the hash and the
+approval before staging, so a build that has gone stale is skipped by
+name rather than published.
 
 ---
 

@@ -1,0 +1,32 @@
+name = "stpaul-sundayschool-site"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+# No nodejs_compat. This Worker uses fetch, Headers, URL and an R2
+# binding, all of which are standard, and adding a runtime flag it does
+# not need is a change to the runtime for no reason.
+
+# The bucket publish.ps1 uploads to. The binding name is what worker.js
+# reads; the bucket_name is what `wrangler r2 object put` writes to, and
+# they are two different things that must both be right.
+[[r2_buckets]]
+binding = "SITE"
+bucket_name = "stpaul-sundayschool"
+
+# The hostname the site is served from. Requires the zone to be on
+# Cloudflare DNS.
+#
+# This must NOT be the approval service's hostname, and the reason is the
+# same one review/README.md gives for that service having its own: an
+# origin is a trust boundary. schoolreview.stpaulaustin.org is authorised
+# on a Google OAuth client that decides who may approve doctrine, and
+# nothing else should ever be reachable there. This site is public, has no
+# sign-in and holds no credential, but co-hosting it would put a public
+# page inside that boundary for no gain at all.
+[[routes]]
+pattern = "sundayschool.stpaulaustin.org"
+custom_domain = true
+
+# The site has no vars and no secrets. Everything it serves comes out of
+# the bucket, and what may enter the bucket was decided by build.py and
+# publish_site.py before an upload was possible.

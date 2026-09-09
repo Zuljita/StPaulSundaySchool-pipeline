@@ -2,6 +2,9 @@
 dist/
 dist-draft/
 build/
+# The staged site bucket. It holds rendered curriculum, so it must never
+# be committable here even when the data root falls back to this checkout.
+dist-site/
 
 __pycache__/
 *.pyc
