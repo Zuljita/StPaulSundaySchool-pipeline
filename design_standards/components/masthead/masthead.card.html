@@ -1,0 +1,37 @@
+<!-- @dsCard group="Components" viewport="700x330" name="Masthead" subtitle="Logo lockup, identity chip, title, meta block, Theme Line" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { margin: 0; padding: 14px; background: var(--surface-page); font-family: var(--font-body); color: var(--text-body); }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+  .lbl { font-family: var(--font-label); font-size: var(--size-label); font-weight: var(--weight-label); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-label); margin: 0 0 5px; }
+  .chip { background: var(--surface-solid); color: var(--on-solid); padding: var(--chip-pad); font-family: var(--font-label); font-size: var(--size-chip); font-weight: var(--weight-chip); letter-spacing: var(--track-label); text-transform: uppercase; }
+  .chip.sm { padding: var(--chip-pad-sm); font-size: var(--size-chip-sm); }
+  p { margin: 0; }
+</style>
+</head>
+<body>
+<header style="display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 20px; border-bottom: var(--rule-heavy) solid var(--border-masthead); padding-bottom: 9px;">
+  <div>
+    <div style="display: flex; align-items: flex-end; gap: 10px; margin-bottom: 7px;">
+      <img src="../../assets/stpaul-logo.png" alt="" style="display: block; width: 132px; height: auto;" />
+      <span style="font-family: var(--font-label); font-size: 11px; font-weight: var(--weight-chip); letter-spacing: var(--track-wordmark); text-transform: uppercase; color: var(--text-display); padding-bottom: 1px;">Sunday School</span>
+    </div>
+    <div style="margin-bottom: 7px;"><span class="chip">Primary 1–2 · Teacher’s Guide</span></div>
+    <h1 style="margin: 0; font-family: var(--font-display); font-size: 30px; font-weight: 400; line-height: var(--lh-display); letter-spacing: -0.01em; color: var(--text-display);">Lorem ipsum dolor sit amet</h1>
+  </div>
+  <p style="margin: 0; text-align: right; font-family: var(--font-label); font-size: var(--size-meta); font-weight: var(--weight-label); line-height: var(--lh-meta); letter-spacing: var(--track-meta); text-transform: uppercase; color: var(--text-meta);">Month 00, 0000<br />Occasion<br />Book 0:0–00<br /><span style="color: var(--season-trinity);">■</span> Season of Trinity</p>
+</header>
+<p style="margin: 11px 0 0; font-family: var(--font-display); font-style: italic; font-size: var(--size-theme); line-height: var(--lh-theme); color: var(--text-label);">Your heavenly Father already knows what you need. <span style="color: var(--text-meta); font-style: normal; font-size: var(--size-body-sm); font-family: var(--font-body);">What happened, and what does this mean?</span></p>
+<div style="margin-top: 14px; border-top: var(--rule-medium) solid var(--border-masthead); padding-top: 8px; display: flex; justify-content: space-between; align-items: baseline; gap: 16px;">
+  <div style="display: flex; align-items: center; gap: 9px;">
+    <span style="font-family: var(--font-label); font-size: var(--size-chip-sm); font-weight: var(--weight-chip); letter-spacing: var(--track-wordmark); text-transform: uppercase; color: var(--text-display);">St. Paul Sunday School</span>
+    <span class="chip sm">Middle School · Student Handout</span>
+  </div>
+  <p style="font-family: var(--font-label); font-size: var(--size-meta); letter-spacing: var(--track-meta); text-transform: uppercase; color: var(--text-meta);">Running header · pages 2+</p>
+</div>
+</body>
+</html>

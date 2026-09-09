@@ -1,0 +1,25 @@
+<!-- @dsCard group="Colors" viewport="700x120" name="Surfaces and rules" subtitle="Paper, tint panel, hairlines, writing rules" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 14px; background: var(--surface-page); font-family: var(--font-body); color: var(--text-body); }
+  p { margin: 0; }
+  .sw { display: flex; align-items: center; gap: 9px; }
+  .box { width: 30px; height: 18px; flex: none; }
+  .hex { font-family: var(--font-label); font-size: var(--size-meta); letter-spacing: 0.06em; color: var(--text-meta); }
+  .use { font-size: 13px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 22px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 20px; }
+</style>
+</head>
+<body>
+<div class="grid2">
+  <div class="sw"><span class="box" style="background: var(--paper); border: var(--rule-hair) solid var(--border-hairline-soft);"></span><span class="hex">fffefb</span><span class="use">Paper</span></div>
+  <div class="sw"><span class="box" style="background: var(--tint); border: var(--rule-hair) solid var(--border-hairline);"></span><span class="hex">eef7fa</span><span class="use">Tint panel · spoken texts</span></div>
+  <div class="sw"><span class="box" style="background: var(--hairline-soft);"></span><span class="hex">cfe0ea</span><span class="use">Soft hairline · column and step rules</span></div>
+  <div class="sw"><span class="box" style="background: var(--rule-writing);"></span><span class="hex">9fb2c9</span><span class="use">Writing rules</span></div>
+</div></body>
+</html>

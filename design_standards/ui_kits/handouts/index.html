@@ -1,0 +1,89 @@
+<!-- @dsCard group="Handouts" viewport="816x1056" name="Student handout sheet" subtitle="A complete printed sheet, built entirely from the tokens" -->
+<!-- @startingPoint section="Handouts" subtitle="One-page student handout: rail, Gospel, memory panel, activities" viewport="816x1056" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Student handout sheet</title>
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { margin: 0; background: #e8e6e0; display: flex; justify-content: center; padding: 0; }
+  .page { width: var(--page-width); height: var(--page-height); box-sizing: border-box; background: var(--surface-page); font-family: var(--font-body); color: var(--text-body); }
+  .inner { padding: var(--page-pad-top) var(--page-pad-side) var(--page-pad-foot); height: 100%; box-sizing: border-box; display: flex; flex-direction: column; }
+  .lbl { margin: 0 0 5px; font-family: var(--font-label); font-size: var(--size-label); font-weight: var(--weight-label); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-label); }
+  p { margin: 0; }
+  .rail p:not(.lbl), .rail li { font-size: var(--size-scripture-sm); line-height: var(--lh-body); }
+</style>
+</head>
+<body>
+<section class="page">
+  <div class="inner">
+
+    <header style="display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 24px; border-bottom: var(--rule-heavy) solid var(--border-masthead); padding-bottom: 9px; margin-bottom: 12px;">
+      <div>
+        <div style="display: flex; align-items: flex-end; gap: 11px; margin-bottom: 8px;">
+          <img src="../../assets/stpaul-logo.png" alt="St. Paul Lutheran Church" style="display: block; width: var(--logo-width); height: auto;" />
+          <span style="font-family: var(--font-label); font-size: 13px; font-weight: var(--weight-chip); letter-spacing: var(--track-wordmark); text-transform: uppercase; color: var(--text-display); padding-bottom: 1px;">Sunday School</span>
+        </div>
+        <div style="margin-bottom: 8px;"><span style="background: var(--surface-solid); color: var(--on-solid); padding: var(--chip-pad); font-family: var(--font-label); font-size: var(--size-chip); font-weight: var(--weight-chip); letter-spacing: var(--track-label); text-transform: uppercase;">Primary 1–2 · Student Handout</span></div>
+        <h1 style="margin: 0; font-family: var(--font-display); font-size: var(--size-h1); font-weight: 400; line-height: var(--lh-display); letter-spacing: -0.01em; color: var(--text-display);" data-slot="title">Lorem ipsum dolor sit amet</h1>
+      </div>
+      <p style="text-align: right; font-family: var(--font-label); font-size: var(--size-meta); font-weight: var(--weight-label); line-height: var(--lh-meta); letter-spacing: var(--track-meta); text-transform: uppercase; color: var(--text-meta);">Month 00, 0000<br />Occasion<br />Book 0:0–00<br /><span style="color: var(--season-trinity);">■</span> Season of Trinity</p>
+    </header>
+
+    <p style="margin-bottom: 12px; font-family: var(--font-display); font-style: italic; font-size: var(--size-theme); line-height: var(--lh-theme); color: var(--text-label); flex: none;" data-slot="theme_line">Lorem ipsum dolor sit amet consectetur adipiscing. <span style="color: var(--text-meta); font-style: normal; font-size: var(--size-body-sm); font-family: var(--font-body);" data-slot="level_question">What happened, and what does this mean?</span></p>
+
+    <div style="display: grid; grid-template-columns: var(--grid-rail); gap: var(--grid-gutter); align-items: start; flex: none;">
+
+      <aside class="rail" style="display: flex; flex-direction: column; gap: var(--stack-md); border-right: var(--rule-hair) solid var(--border-hairline); padding-right: var(--rail-pad);">
+        <div><p class="lbl">Hymn</p><p data-slot="hymn_stanza">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p></div>
+        <div><p class="lbl">From the Small Catechism</p><p data-slot="catechism">Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p></div>
+        <div><p class="lbl">The Collect</p><p data-slot="collect">Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium.</p></div>
+        <figure style="margin: 0; height: var(--artwork-height); flex: none; display: flex; flex-direction: column; gap: 4px;">
+          <div data-slot="artwork" style="display: block; width: 100%; flex: 1; min-height: 0; background: var(--surface-tint); border: var(--rule-hair) solid var(--border-hairline);"></div>
+          <figcaption style="font-family: var(--font-label); font-size: var(--size-art-credit); line-height: 1.4; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-meta);" data-slot="artwork_credit">Artist · Title, Year</figcaption>
+        </figure>
+      </aside>
+
+      <div style="display: flex; flex-direction: column; gap: var(--stack-md); min-width: 0;">
+        <div style="flex: none;">
+          <p class="lbl">The Holy Gospel &nbsp;·&nbsp; Book 0:0–00</p>
+          <div style="column-count: 2; column-gap: 22px; column-rule: var(--rule-hair) solid var(--border-hairline-soft); font-size: var(--size-scripture-sm); line-height: var(--lh-scripture);">
+            <p data-slot="gospel_text"><sup style="font-family: var(--font-label); font-size: var(--size-verse-number); color: var(--verse-number);">24</sup>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. <sup style="font-family: var(--font-label); font-size: var(--size-verse-number); color: var(--verse-number);">25</sup>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. <sup style="font-family: var(--font-label); font-size: var(--size-verse-number); color: var(--verse-number);">26</sup>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. <sup style="font-family: var(--font-label); font-size: var(--size-verse-number); color: var(--verse-number);">27</sup>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. <sup style="font-family: var(--font-label); font-size: var(--size-verse-number); color: var(--verse-number);">28</sup>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium. <sup style="font-family: var(--font-label); font-size: var(--size-verse-number); color: var(--verse-number);">29</sup>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. <sup style="font-family: var(--font-label); font-size: var(--size-verse-number); color: var(--verse-number);">30</sup>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. <sup style="font-family: var(--font-label); font-size: var(--size-verse-number); color: var(--verse-number);">31</sup>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. <sup style="font-family: var(--font-label); font-size: var(--size-verse-number); color: var(--verse-number);">32</sup>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. <sup style="font-family: var(--font-label); font-size: var(--size-verse-number); color: var(--verse-number);">33</sup>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium. <sup style="font-family: var(--font-label); font-size: var(--size-verse-number); color: var(--verse-number);">34</sup>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+          </div>
+        </div>
+
+        <div style="background: var(--surface-solid); color: var(--on-solid); padding: var(--panel-pad);">
+          <p style="margin: 0 0 4px; font-family: var(--font-label); font-size: var(--size-label); font-weight: var(--weight-label); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--on-solid-label);">Memory Work</p>
+          <p style="font-family: var(--font-display); font-size: var(--size-panel-verse); line-height: var(--lh-quote);">“Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.”</p>
+          <p style="margin: 4px 0 0; font-family: var(--font-label); font-size: var(--size-meta); letter-spacing: 0.12em; text-transform: uppercase; color: var(--on-solid-label);" data-slot="memory_ref">Book 0:0</p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div>
+            <p class="lbl" data-slot="activity_1_title">Activity Title</p>
+            <p style="font-size: var(--size-scripture-sm); line-height: var(--lh-body);"><span data-slot="activity_1_body">Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</span></p>
+          </div>
+          <div>
+            <p class="lbl" data-slot="activity_2_title">Activity Title</p>
+            <p style="margin-bottom: 6px; font-size: var(--size-scripture-sm); line-height: var(--lh-body);"><span data-slot="activity_2_body">Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</span></p>
+            <div style="display: grid; gap: var(--writing-gap);">
+              <span style="border-bottom: var(--rule-hair) solid var(--rule-writing); height: var(--writing-height);"></span>
+              <span style="border-bottom: var(--rule-hair) solid var(--rule-writing); height: var(--writing-height);"></span>
+              <span style="border-bottom: var(--rule-hair) solid var(--rule-writing); height: var(--writing-height);"></span>
+              <span style="border-bottom: var(--rule-hair) solid var(--rule-writing); height: var(--writing-height);"></span>
+              <span style="border-bottom: var(--rule-hair) solid var(--rule-writing); height: var(--writing-height);"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer style="border-top: var(--rule-hair) solid var(--border-hairline); margin-top: auto; padding-top: 7px; display: grid; gap: 6px; font-family: var(--font-label); font-size: var(--size-meta); line-height: 1.5; letter-spacing: 0.06em; color: var(--text-meta);">
+      <div style="display: flex; justify-content: space-between; gap: 16px; text-transform: uppercase;"><span>Primary 1–2 · Student Handout · Month 00, 0000</span><span>Page 1 of 1</span></div>
+      <p style="font-size: var(--size-credit); letter-spacing: var(--track-credit); line-height: 1.5;">Credit line. The translation and hymn-licence notices required by the week&#8217;s sources belong here, one line, once per document.</p>
+    </footer>
+  </div>
+</section>
+</body>
+</html>

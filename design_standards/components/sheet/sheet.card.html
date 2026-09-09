@@ -1,0 +1,39 @@
+<!-- @dsCard group="Components" viewport="700x210" name="Sheet and footer" subtitle="The 816×1056 page box, its margins, and the pinned footer" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { margin: 0; padding: 14px; background: var(--surface-page); font-family: var(--font-body); color: var(--text-body); }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+  .lbl { font-family: var(--font-label); font-size: var(--size-label); font-weight: var(--weight-label); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-label); margin: 0 0 5px; }
+  .chip { background: var(--surface-solid); color: var(--on-solid); padding: var(--chip-pad); font-family: var(--font-label); font-size: var(--size-chip); font-weight: var(--weight-chip); letter-spacing: var(--track-label); text-transform: uppercase; }
+  .chip.sm { padding: var(--chip-pad-sm); font-size: var(--size-chip-sm); }
+  p { margin: 0; }
+</style>
+</head>
+<body>
+<div style="display: grid; grid-template-columns: 118px 1fr; gap: 24px; align-items: start;">
+  <div>
+    <div style="width: 118px; height: 152px; border: var(--rule-hair) solid var(--border-hairline); background: var(--surface-page); padding: 6px 8px 5px; box-sizing: border-box; display: flex; flex-direction: column;">
+      <div style="height: 15px; background: var(--surface-solid);"></div>
+      <div style="flex: 1; display: flex; gap: 4px; padding-top: 4px;">
+        <div style="width: 32%; background: var(--surface-tint);"></div>
+        <div style="flex: 1; background: #f4f8fa;"></div>
+      </div>
+      <div style="border-top: var(--rule-hair) solid var(--border-hairline); margin-top: 4px; height: 7px;"></div>
+    </div>
+    <p style="margin: 5px 0 0; font-family: var(--font-label); font-size: var(--size-art-credit); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-meta);">816 × 1056 px</p>
+  </div>
+  <div>
+    <p class="lbl">Margins and pinning</p>
+    <p style="font-size: var(--size-body-sm); line-height: var(--lh-body); margin-bottom: 9px;">0.4in top, 0.55in sides, 0.34in foot. The inner wrapper is a full-height flex column; the footer takes <code style="font-family: var(--font-label); font-size: 12px;">margin-top: auto</code> and every sibling takes <code style="font-family: var(--font-label); font-size: 12px;">flex: none</code>. Lesson pages tighten to 0.34 / 0.55 / 0.3.</p>
+    <div style="border-top: var(--rule-hair) solid var(--border-hairline); padding-top: 7px; display: grid; gap: 6px; font-family: var(--font-label); font-size: var(--size-meta); line-height: 1.5; letter-spacing: 0.06em; color: var(--text-meta);">
+      <div style="display: flex; justify-content: space-between; gap: 16px; text-transform: uppercase;"><span>Primary 1–2 · Teacher’s Guide · Month 00, 0000</span><span>Page 2 of 3</span></div>
+      <p style="font-size: var(--size-credit); letter-spacing: var(--track-credit); line-height: 1.5;">Credit line. The translation and hymn-licence notices required by the week’s sources belong here.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>
