@@ -29,10 +29,18 @@ name: publish
 # time rather than as it stood at build time.
 
 on:
-  # The safety net. Webhooks are missed, dispatches fail, and a Sunday
-  # approved on Saturday night must not wait for someone to notice.
+  # The safety net, and only that. The dispatch below already publishes
+  # within about a minute of an approval, so this exists to catch a
+  # dispatch that never arrived, not to be the normal path.
+  #
+  # Hourly rather than every quarter hour, because the frequency is the
+  # one line in this design that could ever cost money. Actions minutes
+  # are free and unlimited while this repository is public; if it is ever
+  # made private, ~2,880 runs a month would land well past the free
+  # allowance. At hourly it stays under it either way, and the only thing
+  # given up is the worst case for a missed dispatch.
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "0 * * * *"
 
   # The fast path. The approval service fires this after it records a
   # decision, so an approval reaches the site in about a minute.
