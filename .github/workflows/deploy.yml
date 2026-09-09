@@ -1,0 +1,111 @@
+name: deploy approval service
+
+# Ships services/approval to Cloudflare. The review app goes with it:
+# worker.js imports review/index.html as text and serves it from "/", so
+# a change under review/ reaches schoolreview.stpaulaustin.org only
+# through a deploy, never on its own.
+#
+# On secrets. `wrangler deploy` does not read, write or need the Worker's
+# secrets; APPROVAL_SIGNING_KEY and GITHUB_TOKEN stay exactly where
+# setup.ps1 put them, in Cloudflare. Nothing in this file, and no
+# repository secret, should ever hold the signing key. The gate's claim
+# is that write access to the curriculum is not enough to approve
+# doctrine, and that claim holds only while the key lives in one place.
+#
+# The one secret this needs is a Cloudflare API token with Edit
+# Cloudflare Workers on the account, set as CLOUDFLARE_API_TOKEN in the
+# repository settings. Add CLOUDFLARE_ACCOUNT_ID as well if the token can
+# see more than one account, since wrangler will not guess between them.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/approval/**"
+      - "review/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+# Two deploys racing would leave whichever finished last on the origin,
+# which is not necessarily the newer commit.
+concurrency:
+  group: deploy-approval-service
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install
+        run: pip install --quiet pyyaml python-docx reportlab pypdf cryptography
+
+      - name: Tests
+        # Run before shipping, not after. test_signing.py is the reason:
+        # it checks worker.js and tools/stpaul/signing.py build the same
+        # canonical payload byte for byte. A Worker that has drifted from
+        # the Python side stops every existing approval verifying, and it
+        # does so silently, which is the one failure mode a green deploy
+        # must not be able to introduce.
+        env:
+          STPAUL_DATA: /nonexistent
+        run: python -m unittest discover -s tools/tests
+
+      - name: Deploy
+        working-directory: services/approval
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        # Pinned to a major. There is no package.json here, so an
+        # unpinned npx would take whatever npm published this morning.
+        run: npx --yes wrangler@4 deploy
+
+      - name: Check it is actually serving
+        working-directory: services/approval
+        # The hostname is read out of wrangler.toml rather than written
+        # again here, so there is no second copy to drift from the route
+        # the deploy just published.
+        run: |
+          host=$(sed -n 's/^pattern *= *"\(.*\)"/\1/p' wrangler.toml | head -1)
+          if [ -z "$host" ]; then
+            echo "No route pattern in wrangler.toml; skipping the check."
+            exit 0
+          fi
+          echo "Checking https://$host"
+
+          for attempt in 1 2 3 4 5; do
+            code=$(curl -s -o /tmp/config.js -w "%{http_code}" "https://$host/config.js" || true)
+            [ "$code" = "200" ] && break
+            echo "  attempt $attempt: HTTP $code, retrying"
+            sleep 5
+          done
+
+          if [ "$code" != "200" ]; then
+            echo "The app did not come back: HTTP $code."
+            exit 1
+          fi
+          grep -q "STPAUL_CONFIG" /tmp/config.js || {
+            echo "config.js served, but it is not the app's config."
+            exit 1
+          }
+
+          # An unauthenticated read must still be refused. This is the
+          # behaviour the whole roster check rests on, so assert it here
+          # rather than assume a deploy could not have changed it.
+          api=$(curl -s -o /dev/null -w "%{http_code}" "https://$host/api/sundays" || true)
+          if [ "$api" != "401" ]; then
+            echo "GET /api/sundays returned $api, expected 401 for a request with no token."
+            exit 1
+          fi
+
+          echo "Serving, and refusing unauthenticated reads."
