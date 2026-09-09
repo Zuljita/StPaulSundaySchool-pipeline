@@ -7,7 +7,7 @@ repository, found via `$STPAUL_DATA`.
 
 **There is a freeze line, and it is in the other repository.**
 
-Once `approvals/<sunday>.approval.json` records a signed approval, that
+Once `approvals/<sunday>.approval.json` records an approval, that
 Sunday's content is finished text. A pastor read those exact words and
 signed for them. You do not edit it, and you do not write code that
 edits it.
@@ -47,15 +47,16 @@ enough.
 - Do not weaken a rule, or the gate, to make something pass.
 - Do not run `--update-baseline` to make CI green. That hides a new
   mistake among old ones.
-- Do not put the signing private key anywhere but the service's secret
-  store. Not in a file, not in a commit, not in a chat window.
 - Do not commit Bible or hymn text here. Neither the NKJV (© 1982 Thomas
   Nelson) nor the ESV (© 2001 Crossway) is public domain, and this
   repository is meant to be publishable precisely because it holds none.
-- Do not change `SIGNED_FIELDS` or the canonical payload in
-  `tools/stpaul/signing.py` without changing `services/approval/worker.js`
-  to match. They must produce byte-identical bytes or every real approval
-  silently stops verifying. A test compares them; do not skip it.
+- Do not change what a decision is called in one place only.
+  `tools/stpaul/approval.py` defines the words, `services/approval/worker.js`
+  records them and `review/index.html` sends them. When they drifted, the
+  app sent `"REQUEST_CHANGES"`, the service matched only
+  `"changes_requested"`, and everything else fell to a default of
+  `"approved"`, so asking for changes recorded an approval. A test compares
+  all three; do not skip it.
 
 ## Editorial judgment is not yours
 

@@ -6,11 +6,9 @@ name: deploy approval service
 # through a deploy, never on its own.
 #
 # On secrets. `wrangler deploy` does not read, write or need the Worker's
-# secrets; APPROVAL_SIGNING_KEY and GITHUB_TOKEN stay exactly where
-# setup.ps1 put them, in Cloudflare. Nothing in this file, and no
-# repository secret, should ever hold the signing key. The gate's claim
-# is that write access to the curriculum is not enough to approve
-# doctrine, and that claim holds only while the key lives in one place.
+# GITHUB_TOKEN; it stays exactly where setup.ps1 put it, in Cloudflare.
+# That token is scoped to Contents on the data repository and nothing
+# else, and no repository secret here should ever hold a copy of it.
 #
 # The one secret this needs is a Cloudflare API token with Edit
 # Cloudflare Workers on the account, set as CLOUDFLARE_API_TOKEN in the
@@ -48,15 +46,16 @@ jobs:
           node-version: "20"
 
       - name: Install
-        run: pip install --quiet pyyaml python-docx reportlab pypdf cryptography
+        run: pip install --quiet pyyaml python-docx reportlab pypdf
 
       - name: Tests
-        # Run before shipping, not after. test_signing.py is the reason:
-        # it checks worker.js and tools/stpaul/signing.py build the same
-        # canonical payload byte for byte. A Worker that has drifted from
-        # the Python side stops every existing approval verifying, and it
-        # does so silently, which is the one failure mode a green deploy
-        # must not be able to introduce.
+        # Run before shipping, not after. test_decisions.py is the reason:
+        # it checks that worker.js, the review app and
+        # tools/stpaul/approval.py still agree on what a decision is called
+        # and on what blocks an approval. When they drifted apart before,
+        # "Request changes" recorded an approval, and it did so silently,
+        # which is the kind of failure a green deploy must not be able to
+        # introduce.
         env:
           STPAUL_DATA: /nonexistent
         run: python -m unittest discover -s tools/tests

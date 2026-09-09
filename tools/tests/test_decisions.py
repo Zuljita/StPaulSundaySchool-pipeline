@@ -11,7 +11,7 @@ Three places have an opinion about what a reviewer decided:
 They agreed on paper and not in fact. The app sent "APPROVE" and
 "REQUEST_CHANGES"; the Worker compared against "changes_requested" and
 sent everything else down an `: "approved"` branch. So "Request changes"
-signed an approval, in the reviewer's name, over content he had just
+recorded an approval, in the reviewer's name, over content he had just
 asked to have changed. It failed in the one direction a doctrinal gate
 must never fail.
 
