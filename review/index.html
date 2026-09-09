@@ -458,8 +458,18 @@ async function render() {
     if (slug) await viewSunday(main, slug);
     else await viewIndex(main);
   } catch (e) {
-    main.appendChild(el("div", "banner err",
-      "Could not load review data. Run: python tools/make_review.py"));
+    // Say what actually failed. This banner used to name one cause,
+    // missing review data, for every failure, so a reader who was merely
+    // signed out was told to regenerate files that were already correct,
+    // and regenerating them changed nothing. viewSunday reports its own
+    // error; the index had no such path and fell through to here.
+    //
+    // The service writes its errors to be read by a person, so pass them
+    // through unchanged. Only "not signed in" is too terse to act on.
+    const msg = String((e && e.message) || e);
+    const hint = /not signed in/i.test(msg) ? " Sign in with Google, above." : "";
+    const text = /[.!?]$/.test(msg) ? msg : msg + ".";
+    main.appendChild(el("div", "banner err", text + hint));
   }
 }
 
