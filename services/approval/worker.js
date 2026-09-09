@@ -300,8 +300,24 @@ async function handleApprove(request, env, origin) {
   if (!/^\d{4}-\d{2}-\d{2}-[a-z0-9-]+$/.test(slug)) {
     return json({ error: "bad sunday slug" }, 400, origin);
   }
-  const decision = body.decision === "changes_requested"
-    ? "changes_requested" : "approved";
+  // Never infer an approval. This defaulted anything it did not
+  // recognise to "approved", and the review app was sending "APPROVE"
+  // and "REQUEST_CHANGES", so a pastor clicking "Request changes" had an
+  // approval signed and committed in his name. The one safe default at
+  // this line is no default at all: a decision this service cannot name
+  // exactly is one it refuses to record.
+  //
+  // The values are the constants in tools/stpaul/approval.py, which is
+  // what counts them at gate time. If those ever gain a third, this list
+  // is the place it has to be added.
+  const DECISIONS = ["approved", "changes_requested"];
+  if (!DECISIONS.includes(body.decision)) {
+    return json({
+      error: `unrecognised decision ${JSON.stringify(body.decision ?? null)}. ` +
+             `Expected one of: ${DECISIONS.join(", ")}.`,
+    }, 400, origin);
+  }
+  const decision = body.decision;
 
   // The hash comes from the repository, never from the client. CI writes
   // review/data/<slug>.json from the content itself, so what gets
@@ -323,11 +339,36 @@ async function handleApprove(request, env, origin) {
     }, 409, origin);
   }
 
-  // Refuse to sign an approval over content that still breaks a rule.
-  if (decision === "approved" && (review_data.lint?.errors || 0) > 0) {
+  // Refuse to sign an approval over content that breaks a rule it did
+  // not break before.
+  //
+  // This is weaker than blocking on the raw count, and the weakening was
+  // decided rather than overlooked. The Sundays imported from the
+  // archive carry violations that were already in print, several of them
+  // the pastor's to rule on rather than anyone's to fix, and
+  // standards/lint-baseline.json is the record of that debt. Blocking on
+  // the raw count meant no imported Sunday could ever be approved: the
+  // three live ones stood at 98, 109 and 212, so the gate refused
+  // everything, which is not a stricter gate but an unusable one. What
+  // is new is still refused, and lint.py --baseline draws its line in
+  // exactly the same place.
+  //
+  // A bundle written before new_errors existed cannot tell new from
+  // known, so it falls back to the raw count and refuses. Failing closed
+  // on a stale bundle is the same instinct as refusing a decision this
+  // service cannot name: when it does not know, it does not sign.
+  const lint = review_data.lint || {};
+  const baselined = typeof lint.new_errors === "number";
+  const blocking = baselined ? lint.new_errors : (lint.errors || 0);
+  if (decision === "approved" && blocking > 0) {
     return json({
-      error: `${review_data.lint.errors} rule violation(s) outstanding. ` +
-             `Nobody should be asked to approve text that already breaks a written standard.`,
+      error: baselined
+        ? `${blocking} rule violation(s) introduced since the baseline. ` +
+          `Nobody should be asked to approve text that breaks a written ` +
+          `standard it did not break before.`
+        : `${blocking} rule violation(s) outstanding, and this review bundle ` +
+          `predates the baseline count, so which of them are new cannot be ` +
+          `told from here. Regenerate it with tools/make_review.py and commit.`,
     }, 409, origin);
   }
 
