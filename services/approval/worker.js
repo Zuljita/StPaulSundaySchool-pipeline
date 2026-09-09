@@ -37,12 +37,14 @@
  *
  * SECRETS (wrangler secret put ...)
  *   GITHUB_TOKEN           write access to the data repository only
+ *   PUBLISH_DISPATCH_TOKEN optional; may fire a workflow in PUBLISH_REPO
  *
  * VARS (wrangler.toml)
  *   GOOGLE_CLIENT_ID       OAuth client id the ID token must be issued for
  *   DATA_REPO              e.g. "Zuljita/StPaulSundaySchool"
  *   ALLOWED_ORIGIN         where the review app is served from
  *   ALLOWED_HD             optional Workspace domain reviewers must be in
+ *   PUBLISH_REPO           optional; the pipeline repository to notify
  */
 
 // The review app itself. Serving it from here rather than from a separate
@@ -184,6 +186,43 @@ async function ghPut(env, path, text, sha, message) {
   });
   if (!res.ok) throw new Error(`GitHub ${res.status} writing ${path}: ${await res.text()}`);
   return res.json();
+}
+
+/**
+ * Tell the pipeline repository that something is ready to publish.
+ *
+ * Optional, and deliberately incapable of failing an approval. By the
+ * time this runs the decision is already committed to the data
+ * repository, which is the part that matters; this only shortens the
+ * wait before it reaches the site. The publish workflow also runs on a
+ * schedule, so a dispatch that never arrives costs minutes, not a
+ * publication.
+ *
+ * Nothing here is allowed to throw. An approval that recorded correctly
+ * must not report failure because a notification did not go out.
+ */
+async function notifyPublisher(env, slug, decision) {
+  if (decision !== "approved") return;
+  if (!env.PUBLISH_REPO || !env.PUBLISH_DISPATCH_TOKEN) return;
+  try {
+    await fetch(`${GH}/repos/${env.PUBLISH_REPO}/dispatches`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.PUBLISH_DISPATCH_TOKEN}`,
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json",
+        "User-Agent": "stpaul-approval",
+      },
+      body: JSON.stringify({
+        event_type: "approval-recorded",
+        // Which Sunday, and nothing else. The workflow reads the
+        // curriculum itself; it does not need to be told any of it.
+        client_payload: { sunday: slug },
+      }),
+    });
+  } catch (e) {
+    // Swallowed on purpose. See the note above.
+  }
 }
 
 /**
@@ -368,6 +407,10 @@ async function handleApprove(request, env, origin) {
     `Recorded by the approval service, which verified the reviewer's ` +
     `Google identity against standards/reviewers.yml.\n`
   );
+
+  // After the commit, never before: publishing is downstream of the
+  // approval being recorded, not a condition of it.
+  await notifyPublisher(env, slug, decision);
 
   return json({ ok: true, decision, reviewer: entry.name,
                 content_sha256: contentHash, at: review.at }, 200, origin);

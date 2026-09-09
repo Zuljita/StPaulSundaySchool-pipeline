@@ -28,6 +28,8 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
+import datetime as _dt
 from html import unescape
 from pathlib import Path
 
@@ -41,7 +43,7 @@ WORKER = ROOT / "services" / "site" / "worker.js"
 from stpaul import approval, hashing
 from stpaul.model import load_lesson
 from stpaul.render import blocks as blocks_mod
-from stpaul.render import docx_render, pdf_render, site
+from stpaul.render import docx_render, handoff, package, pdf_render, site
 
 SLUG = "2026-01-04-test"
 
@@ -166,7 +168,7 @@ class SiteRenderTestCase(unittest.TestCase):
         Anything else is content that got through unescaped.
         """
         allowed = re.compile(
-            r"</?(?:!doctype|html|head|meta|title|link|body|div|p|h1|h2|h3|"
+            r"</?(?:!doctype|html|head|meta|title|link|script|body|div|p|h1|h2|h3|"
             r"a|span|ul|li|strong|em|br|blockquote|footer)\b[^<]*?>",
             re.I)
         for name, html in self.written().items():
@@ -388,15 +390,22 @@ class DeterminismTestCase(unittest.TestCase):
                     f"bytes; build.py records the build time in "
                     f"BUILD-PROVENANCE.json, outside the rendered files.")
 
-    def test_the_site_renderer_emits_no_script(self):
-        """The pages carry no JavaScript, which is what lets the Worker's
-        Content-Security-Policy forbid scripting outright.
+    def test_the_only_script_is_the_service_worker_registration(self):
+        """The site had no JavaScript at all, and now has exactly one file.
 
-        Checked inside real tags only. The fixture deliberately contains
-        the text `<img src=x onerror=alert(1)>`, and finding that string
-        in the output is the *correct* result: it means the escaping
-        worked and a browser will print it rather than run it. What must
-        not exist is an event handler in a tag this renderer emitted.
+        That was traded deliberately: Android will not offer to install a
+        site with no service worker, and installing is the thing the
+        Base44 app gives a reader today. The trade is held to its
+        smallest shape, and this test is what holds it there.
+
+          * no inline script, so the CSP needs no 'unsafe-inline',
+          * no event handlers and no javascript: URLs,
+          * one external source, and only the registration file.
+
+        The fixture deliberately contains `<img src=x onerror=alert(1)>`
+        as curriculum text. Finding that string in the output is correct:
+        it means the escaping worked. What must not exist is an event
+        handler inside a tag this renderer emitted.
         """
         handler = re.compile(r"\son\w+\s*=", re.I)
         tmp = Path(tempfile.mkdtemp(prefix="stpaul-site-"))
@@ -407,14 +416,179 @@ class DeterminismTestCase(unittest.TestCase):
                 if path.suffix != ".html":
                     continue
                 html = path.read_text(encoding="utf-8")
-                self.assertNotIn("<script", html.lower())
 
-                # Content is escaped, so every surviving "<" opens a tag
-                # this renderer wrote.
                 for tag in re.findall(r"<[^>]*>", html):
                     self.assertIsNone(handler.search(tag),
                                       f"{path.name} emits an event handler: {tag}")
                     self.assertNotIn("javascript:", tag.lower())
+
+                scripts = re.findall(r"<script\b([^>]*)>(.*?)</script>", html, re.S | re.I)
+                self.assertEqual(len(scripts), 1,
+                                 f"{path.name} has {len(scripts)} script tags; "
+                                 f"exactly one is allowed")
+                attrs, inline = scripts[0]
+                self.assertEqual(inline.strip(), "",
+                                 "an inline script would force 'unsafe-inline' "
+                                 "into the Content-Security-Policy")
+                src = re.search(r'src="([^"]+)"', attrs)
+                self.assertIsNotNone(src, "the script must be an external file")
+                self.assertEqual(src.group(1), "/assets/register-sw.js")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_the_pages_still_read_with_javascript_off(self):
+        """The worker is an addition, never a dependency.
+
+        Everything a reader needs is in the HTML: if the script never
+        runs, the only thing lost is offline reading.
+        """
+        tmp = Path(tempfile.mkdtemp(prefix="stpaul-site-"))
+        try:
+            content, digest = build_lesson(tmp)
+            lesson = load_lesson(SLUG, content_dir=content)
+            html = site.render_piece(lesson, lesson.pieces[0], digest)
+            body = html[html.index("<body>"):]
+            self.assertNotIn("<script", body,
+                             "no script in the body, so nothing renders through one")
+            self.assertIn("What They Heard", body)
+            self.assertIn(digest, body)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+class ReproducibleOutputTestCase(unittest.TestCase):
+    """Two builds of the same approved bytes must produce the same files.
+
+    CLAUDE.md calls this "the only reason the printed handouts and the app
+    can be trusted to say the same thing", and it was not true. The DOCX
+    and the PDF both embedded the wall clock, so the same approved lesson
+    rendered twice produced two different files. The words matched and the
+    bytes did not, which makes "rebuild it and compare" — the check the
+    whole freeze line is supposed to enable — unable to answer.
+
+    The renderers' own source was clean, so scanning it for `.now(` found
+    nothing: the clock was read inside reportlab and python-docx. These
+    tests look at the artefacts instead.
+    """
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="stpaul-repro-"))
+        self.content, self.digest = build_lesson(self.tmp)
+        self.lesson = load_lesson(SLUG, content_dir=self.content)
+        self.piece = self.lesson.pieces[0]
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_the_docx_is_byte_identical_across_renders(self):
+        a = docx_render.render(self.lesson, self.piece, self.digest, self.tmp / "a.docx")
+        b = docx_render.render(self.lesson, self.piece, self.digest, self.tmp / "b.docx")
+        self.assertEqual(a.read_bytes(), b.read_bytes())
+
+    def test_the_pdf_is_byte_identical_across_renders(self):
+        a = pdf_render.render(self.lesson, self.piece, self.digest, self.tmp / "a.pdf")
+        b = pdf_render.render(self.lesson, self.piece, self.digest, self.tmp / "b.pdf")
+        self.assertEqual(a.read_bytes(), b.read_bytes())
+
+    def test_the_docx_carries_no_build_time(self):
+        """The bug directly: every entry in the package was clock-stamped."""
+        out = docx_render.render(self.lesson, self.piece, self.digest,
+                                 self.tmp / "c.docx")
+        want = package.date_time_for(self.lesson.date)
+        with zipfile.ZipFile(out) as z:
+            stamps = {i.date_time for i in z.infolist()}
+            systems = {i.create_system for i in z.infolist()}
+        self.assertEqual(stamps, {want},
+                         "a .docx entry is timestamped from the clock, not the lesson")
+        self.assertEqual(systems, {package.CREATE_SYSTEM},
+                         "the .docx records the OS that built it, so Windows and "
+                         "Linux builds of the same lesson would differ")
+
+    def test_the_pdf_carries_no_build_time(self):
+        out = pdf_render.render(self.lesson, self.piece, self.digest, self.tmp / "d.pdf")
+        today = _dt.datetime.now(_dt.timezone.utc).strftime("D:%Y%m%d")
+        self.assertNotIn(today.encode(), out.read_bytes(),
+                         "the PDF embeds today's date, so a rebuild cannot be "
+                         "compared against the file that was printed")
+
+    def test_the_weekly_package_is_byte_identical_across_builds(self):
+        """The archive inherits whatever its contents do."""
+        def build_package(tag: str) -> bytes:
+            out = self.tmp / tag
+            (out / "handouts").mkdir(parents=True, exist_ok=True)
+            for piece in self.lesson.pieces:
+                stem = f"{piece.order:02d}-{piece.id}"
+                docx_render.render(self.lesson, piece, self.digest,
+                                   out / "handouts" / f"{stem}.docx")
+            handoff.write(self.lesson, out, self.digest)
+            z = package.write(out, SLUG,
+                              date_time=package.date_time_for(self.lesson.date))
+            return z.read_bytes()
+
+        self.assertEqual(build_package("p1"), build_package("p2"))
+
+    def test_the_package_holds_the_handouts_and_the_handoff(self):
+        out = self.tmp / "pkg"
+        (out / "handouts").mkdir(parents=True, exist_ok=True)
+        docx_render.render(self.lesson, self.piece, self.digest,
+                           out / "handouts" / "01-family-take-home.docx")
+        handoff.write(self.lesson, out, self.digest)
+        z = package.write(out, SLUG)
+        with zipfile.ZipFile(z) as zf:
+            names = set(zf.namelist())
+        self.assertIn("handouts/01-family-take-home.docx", names)
+        self.assertTrue(any(n.startswith("handoff/") for n in names))
+        # Not a copy of the web site: this is what someone prints from.
+        self.assertFalse(any(n.startswith("site/") for n in names))
+
+
+class AppShellTestCase(unittest.TestCase):
+    """The manifest, the icons and the service worker that make it installable."""
+
+    def test_the_manifest_meets_the_android_install_criteria(self):
+        m = json.loads(site.render_manifest())
+        self.assertTrue(m.get("name") and m.get("short_name"))
+        self.assertEqual(m["start_url"], "/")
+        self.assertIn(m["display"], ("standalone", "fullscreen", "minimal-ui"))
+        sizes = {i["sizes"] for i in m["icons"]}
+        self.assertIn("192x192", sizes, "Android wants a 192px icon")
+        self.assertIn("512x512", sizes, "Android wants a 512px icon")
+        purposes = {i.get("purpose") for i in m["icons"]}
+        self.assertIn("maskable", purposes,
+                      "without a maskable icon Android crops the mark itself")
+
+    def test_every_icon_the_manifest_names_is_committed(self):
+        """A manifest naming an icon that does not exist fails the install."""
+        public = ROOT / "services" / "site" / "public"
+        for icon in json.loads(site.render_manifest())["icons"]:
+            path = public / icon["src"].lstrip("/")
+            self.assertTrue(path.is_file(),
+                            f"{icon['src']} is in the manifest but not in the repo. "
+                            f"Run tools/make_icons.py.")
+
+    def test_the_service_worker_is_versioned_by_content_not_by_a_clock(self):
+        a = site.render_service_worker("deadbeef", ["/"])
+        b = site.render_service_worker("deadbeef", ["/"])
+        self.assertEqual(a, b)
+        self.assertIn('"stpaul-deadbeef"', a)
+        self.assertNotEqual(a, site.render_service_worker("cafe", ["/"]))
+
+    def test_the_service_worker_never_caches_handouts(self):
+        """A year of PDFs would fill a phone."""
+        sw = site.render_service_worker("v", ["/"])
+        self.assertIn("pdf|docx|zip", sw)
+
+    def test_every_page_links_the_manifest_and_the_icons(self):
+        tmp = Path(tempfile.mkdtemp(prefix="stpaul-shell-"))
+        try:
+            content, digest = build_lesson(tmp)
+            lesson = load_lesson(SLUG, content_dir=content)
+            for path in site.write(lesson, tmp / "dist", digest):
+                if path.suffix != ".html":
+                    continue
+                html = path.read_text(encoding="utf-8")
+                self.assertIn('rel="manifest"', html)
+                self.assertIn('name="theme-color"', html)
+                self.assertIn('rel="apple-touch-icon"', html)
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 

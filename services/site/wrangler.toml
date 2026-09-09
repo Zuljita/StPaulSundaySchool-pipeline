@@ -6,7 +6,7 @@ compatibility_date = "2026-01-01"
 # binding, all of which are standard, and adding a runtime flag it does
 # not need is a change to the runtime for no reason.
 
-# The bucket publish.ps1 uploads to. The binding name is what worker.js
+# The bucket tools/publish_r2.py uploads to. The binding name is what worker.js
 # reads; the bucket_name is what `wrangler r2 object put` writes to, and
 # they are two different things that must both be right.
 [[r2_buckets]]

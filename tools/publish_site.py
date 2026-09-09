@@ -6,9 +6,10 @@
     python tools\\publish_site.py --out D:\\dev\\StPaulSundaySchool\\dist-site
 
 Takes what `build.py` already rendered and assembles the bucket: the
-front page, each Sunday, each piece, the stylesheet, and the printable
-handouts. Writes `r2-manifest.json` beside them, which
-`services/site/publish.ps1` reads to do the upload.
+front page, each Sunday, each piece, the app shell (manifest, icons,
+service worker), the printable handouts and the week's ZIP. Writes
+`r2-manifest.json` beside them, which `tools/publish_r2.py` reads to do
+the upload.
 
 THE GATE, AGAIN, AT THE LAST MOMENT
 
@@ -45,10 +46,16 @@ if hasattr(sys.stdout, "reconfigure"):
 from stpaul.approval import verify
 from stpaul.hashing import content_hash
 from stpaul.model import (APPROVALS_DIR, CONTENT_DIR, DATA_ROOT, DIST_DIR,
-                          STANDARDS_DIR)
-from stpaul.render.site import STYLESHEET, render_index
+                          REPO_ROOT, STANDARDS_DIR)
+from stpaul.render.site import (REGISTER_SW, STYLESHEET, render_index,
+                               render_manifest, render_service_worker)
 
 DEFAULT_OUT = DATA_ROOT / "dist-site"
+
+# Icons and anything else the site serves that is not rendered from
+# content. It lives in the pipeline repository because it is chrome,
+# not curriculum.
+PUBLIC_DIR = REPO_ROOT / "services" / "site" / "public"
 
 # The R2 key is the URL path. `/` and `/<slug>/` resolve to index.html,
 # which the Worker appends; nothing else is rewritten. One mapping, in
@@ -58,6 +65,9 @@ CONTENT_TYPES = {
     ".html": "text/html; charset=utf-8",
     ".css": "text/css; charset=utf-8",
     ".json": "application/json; charset=utf-8",
+    ".webmanifest": "application/manifest+json; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".zip": "application/zip",
     ".pdf": "application/pdf",
     ".docx": ("application/vnd.openxmlformats-officedocument"
               ".wordprocessingml.document"),
@@ -118,8 +128,64 @@ def candidate(slug: str, dist: Path, *,
     entry = json.loads(entry_path.read_text(encoding="utf-8")) if entry_path.is_file() else {
         "slug": slug, "date": "", "liturgical_day": slug,
     }
+    packages = sorted((dist / slug).glob("*-package*.zip"))
     return {"slug": slug, "site_dir": site_dir, "entry": entry,
-            "handouts": dist / slug / "handouts"}
+            "handouts": dist / slug / "handouts", "packages": packages}
+
+
+def _manifest_rows(out: Path) -> list[dict]:
+    """Every staged file, as manifest rows, in a stable order."""
+    rows = []
+    for f in sorted(p for p in out.rglob("*") if p.is_file()):
+        if f.name == "r2-manifest.json":
+            continue
+        rows.append({
+            "key": f.relative_to(out).as_posix(),
+            "sha256": hashlib.sha256(f.read_bytes()).hexdigest(),
+            "bytes": f.stat().st_size,
+            "content_type": content_type(f),
+        })
+    return rows
+
+
+def _cache_version(rows: list[dict]) -> str:
+    """A cache name derived from the bytes being published.
+
+    Not from a clock. Keyed on build time the service worker would evict
+    its cache on every publish whether or not anything changed; keyed on
+    nothing it would serve last week's lesson forever. Keyed on the
+    content it turns over exactly when the content does, which also makes
+    two publishes of the same approved bytes produce the same worker.
+    """
+    payload = json.dumps([[r["key"], r["sha256"]] for r in rows],
+                         sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
+
+def _precache(cands: list[dict]) -> list[str]:
+    """The shell, plus the newest Sunday, for reading with no signal.
+
+    Not every Sunday: a year of them would be megabytes of cache for
+    pages nobody is about to open. The week that is coming is the one a
+    teacher needs in a room with bad reception, and everything else is
+    cached as it is visited.
+    """
+    urls = [
+        "/",
+        "/assets/site.css",
+        "/manifest.webmanifest",
+        "/assets/icon-192.png",
+        "/assets/icon-512.png",
+    ]
+    newest = max(cands, key=lambda c: (str(c["entry"].get("date", "")), c["slug"]),
+                 default=None)
+    if newest:
+        slug = newest["slug"]
+        urls.append(f"/{slug}/")
+        pieces = newest["site_dir"] / "pieces"
+        if pieces.is_dir():
+            urls += [f"/{slug}/pieces/{f.name}" for f in sorted(pieces.glob("*.html"))]
+    return urls
 
 
 def stage(cands: list[dict], out: Path) -> list[dict]:
@@ -128,8 +194,21 @@ def stage(cands: list[dict], out: Path) -> list[dict]:
         shutil.rmtree(out)
     out.mkdir(parents=True, exist_ok=True)
 
-    (out / "assets").mkdir(parents=True, exist_ok=True)
-    (out / "assets" / "site.css").write_text(STYLESHEET, encoding="utf-8")
+    assets = out / "assets"
+    assets.mkdir(parents=True, exist_ok=True)
+
+    # Generated from the renderer, so the site's styling and its app
+    # metadata have one source each.
+    (assets / "site.css").write_text(STYLESHEET, encoding="utf-8")
+    (assets / "register-sw.js").write_text(REGISTER_SW, encoding="utf-8")
+    (out / "manifest.webmanifest").write_text(render_manifest(), encoding="utf-8")
+
+    # Static chrome: the icons, cut from the church logo by
+    # tools/make_icons.py and committed.
+    if (PUBLIC_DIR / "assets").is_dir():
+        for f in sorted((PUBLIC_DIR / "assets").iterdir()):
+            if f.is_file():
+                shutil.copy2(f, assets / f.name)
 
     (out / "index.html").write_text(
         render_index([c["entry"] for c in cands]), encoding="utf-8")
@@ -147,26 +226,30 @@ def stage(cands: list[dict], out: Path) -> list[dict]:
 
         # The printables. Kept out of the HTML tree so the Worker's
         # /handouts/ prefix and the bucket agree by construction.
+        hdest = out / "handouts" / slug
         if c["handouts"].is_dir():
-            hdest = out / "handouts" / slug
             hdest.mkdir(parents=True, exist_ok=True)
             for f in sorted(c["handouts"].iterdir()):
                 if f.is_file():
                     shutil.copy2(f, hdest / f.name)
 
-    rows = []
-    for f in sorted(p for p in out.rglob("*") if p.is_file()):
-        if f.name == "r2-manifest.json":
-            continue
-        rows.append({
-            "key": f.relative_to(out).as_posix(),
-            "sha256": hashlib.sha256(f.read_bytes()).hexdigest(),
-            "bytes": f.stat().st_size,
-            "content_type": content_type(f),
-        })
+        # The whole-week archive, which build.py writes beside the
+        # Sunday rather than inside the directory it archives.
+        for z in c["packages"]:
+            hdest.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(z, hdest / z.name)
 
+    # The service worker last, and versioned by everything above it. It
+    # is excluded from its own version by construction: it does not exist
+    # yet when the version is computed.
+    version = _cache_version(_manifest_rows(out))
+    (out / "sw.js").write_text(
+        render_service_worker(version, _precache(cands)), encoding="utf-8")
+
+    rows = _manifest_rows(out)
     (out / "r2-manifest.json").write_text(
-        json.dumps({"objects": rows}, indent=2, ensure_ascii=False) + "\n",
+        json.dumps({"cache_version": version, "objects": rows},
+                   indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8")
     return rows
 
@@ -216,7 +299,7 @@ def main() -> int:
         print(f"         {c['slug']}")
     print(f"\n         -> {out}")
     print("\nUpload with:")
-    print(f"  pwsh services\\site\\publish.ps1 -Staged \"{out}\" -Bucket stpaul-sundayschool")
+    print(f'  python tools\\publish_r2.py --staged "{out}"')
     return 0
 
 

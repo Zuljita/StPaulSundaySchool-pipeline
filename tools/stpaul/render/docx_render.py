@@ -13,6 +13,7 @@ says.
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from pathlib import Path
 
 from docx import Document
@@ -23,7 +24,7 @@ from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
 from ..model import Lesson, Piece
-from . import brand
+from . import brand, package
 from .blocks import blocks
 from .handoff import piece_heading
 
@@ -190,6 +191,28 @@ def render(lesson: Lesson, piece: Piece, source_hash: str, out_path: Path) -> Pa
     _add_runs(p, f"Source {source_hash[:12]}", st, palette.navy)
 
     _footer(doc, lesson, piece)
+
+    # Word stamps a document with when it was written. Left alone, two
+    # builds of the same approved bytes differ, which would make the one
+    # property this pipeline rests on false for the file a teacher
+    # actually prints. Dated from the lesson instead: deterministic,
+    # derived from the content, and correct to a person reading the
+    # file's properties.
+    stamp = datetime(lesson.date.year, lesson.date.month, lesson.date.day)
+    core = doc.core_properties
+    core.created = stamp
+    core.modified = stamp
+    core.last_modified_by = "St. Paul Sunday School pipeline"
+    core.revision = 1
+    core.title = piece.title or piece_heading(lesson, piece)
+    core.author = "St. Paul Lutheran Church, Austin"
+    core.comments = f"source {source_hash}"
+
     out_path.parent.mkdir(parents=True, exist_ok=True)
     doc.save(str(out_path))
+
+    # A .docx is a ZIP, and python-docx writes its entries through
+    # `writestr`, which timestamps each one from the clock. The document
+    # metadata above does not reach those.
+    package.normalize(out_path, package.date_time_for(lesson.date))
     return out_path

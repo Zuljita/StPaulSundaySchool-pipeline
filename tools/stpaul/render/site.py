@@ -53,6 +53,14 @@ INLINE = re.compile(r"(\*\*.+?\*\*|\*.+?\*)")
 # them; it does not carry them.
 HANDOUT_ROOT = "/handouts"
 
+# design_standards/CLAUDE.md, Palette. Navy is the launcher and browser
+# chrome colour; paper is what a page is painted on before the CSS lands.
+THEME_COLOR = "082858"
+BACKGROUND_COLOR = "fffefb"
+
+APP_NAME = "St. Paul Sunday School"
+APP_SHORT_NAME = "Sunday School"
+
 
 # ---------------------------------------------------------------------
 # The stylesheet
@@ -254,6 +262,27 @@ li { margin-bottom: 0.35rem; }
   text-transform: uppercase;
 }
 
+.package {
+  background: var(--tint);
+  border-left: 3px solid var(--blue);
+  padding: 0.7rem 0.9rem;
+  margin: 0 0 1.5rem;
+  max-width: none;
+}
+.package a {
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+.package .note {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--text-meta);
+  margin-top: 0.2rem;
+}
+
 /* --- the Sunday list --------------------------------------------- */
 
 /* max-width: none, because the generic `ul` rule caps lists at the reading
@@ -402,6 +431,21 @@ def _render_body(body: str) -> list[str]:
 # Page shell
 # ---------------------------------------------------------------------
 
+# The head every page carries. The service worker registration is an
+# external file rather than an inline script so the Content-Security
+# Policy can stay free of 'unsafe-inline'.
+HEAD_LINKS = [
+    '<link rel="stylesheet" href="/assets/site.css">',
+    '<link rel="manifest" href="/manifest.webmanifest">',
+    '<link rel="icon" href="/assets/favicon.png" type="image/png">',
+    '<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">',
+    f'<meta name="theme-color" content="#{THEME_COLOR}">',
+    '<meta name="apple-mobile-web-app-capable" content="yes">',
+    '<meta name="apple-mobile-web-app-title" content="Sunday School">',
+    '<script src="/assets/register-sw.js" defer></script>',
+]
+
+
 def _shell(title: str, body: list[str], *, draft: bool) -> str:
     banner = ['<div class="draft-banner">Draft proof. Not approved. Do not distribute.</div>'] \
         if draft else []
@@ -412,7 +456,7 @@ def _shell(title: str, body: list[str], *, draft: bool) -> str:
         '<meta charset="utf-8">',
         '<meta name="viewport" content="width=device-width, initial-scale=1">',
         f"<title>{_esc(title)}</title>",
-        '<link rel="stylesheet" href="/assets/site.css">',
+        *HEAD_LINKS,
         "</head>",
         "<body>",
         *banner,
@@ -565,6 +609,14 @@ def render_sunday(lesson: Lesson, source_hash: str, *, draft: bool = False) -> s
 
     body.append('<h2 class="section">The Twelve Pieces</h2>')
 
+    # The whole week in one file, for a teacher who does not want
+    # twenty-four downloads. Named to match what package.write() built.
+    zip_name = f"{lesson.slug}-package" + ("-DRAFT" if draft else "") + ".zip"
+    body.append(
+        f'<p class="package"><a href="{HANDOUT_ROOT}/{_esc(lesson.slug)}/'
+        f'{_esc(zip_name)}">Download the whole week</a> '
+        f'<span class="note">every handout, PDF and Word, in one archive</span></p>')
+
     # Levels in the order the export standard fixes, then the two
     # all-ages pieces, then anything the manifest grows later. Sorting by
     # a known order rather than by whatever the filesystem returned is
@@ -689,3 +741,141 @@ def write(lesson: Lesson, out_dir: Path, source_hash: str,
     written.append(entry)
 
     return written
+
+
+# ---------------------------------------------------------------------
+# The app shell: manifest, service worker, registration
+#
+# These make the site installable, which is what a reader gets from the
+# Base44 app today: an icon on the home screen and something that opens
+# without a browser bar. Android's install prompt wants all three of a
+# manifest, icons at 192 and 512, and a service worker with a fetch
+# handler, so all three are here.
+#
+# WHAT THIS COSTS
+#
+# The pages were entirely free of JavaScript, and the Worker's CSP said
+# so. Installability is not reachable without a service worker, so that
+# property is traded for it. The trade is kept as small as it can be:
+# every page still renders completely with JavaScript disabled, the one
+# script is an external file so the CSP needs no 'unsafe-inline', and the
+# worker only caches. Nothing on the site depends on it running.
+# ---------------------------------------------------------------------
+
+def render_manifest() -> str:
+    """The web app manifest."""
+    return json.dumps({
+        "name": APP_NAME,
+        "short_name": APP_SHORT_NAME,
+        "description": "Weekly Sunday School lessons and handouts.",
+        "start_url": "/",
+        "scope": "/",
+        "display": "standalone",
+        "orientation": "portrait",
+        "background_color": f"#{BACKGROUND_COLOR}",
+        "theme_color": f"#{THEME_COLOR}",
+        "icons": [
+            {"src": "/assets/icon-192.png", "sizes": "192x192",
+             "type": "image/png", "purpose": "any"},
+            {"src": "/assets/icon-512.png", "sizes": "512x512",
+             "type": "image/png", "purpose": "any"},
+            {"src": "/assets/icon-maskable-192.png", "sizes": "192x192",
+             "type": "image/png", "purpose": "maskable"},
+            {"src": "/assets/icon-maskable-512.png", "sizes": "512x512",
+             "type": "image/png", "purpose": "maskable"},
+        ],
+    }, indent=2, ensure_ascii=False) + "\n"
+
+
+REGISTER_SW = """\
+/* Registers the service worker, which is the whole of this site's
+   JavaScript. Everything renders without it; it adds offline reading and
+   makes the site installable. */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("/sw.js", { scope: "/" });
+  });
+}
+"""
+
+
+def render_service_worker(version: str, precache: list[str]) -> str:
+    """The service worker, versioned by the content it was built from.
+
+    `version` must be derived from the published bytes, never from a
+    clock. A cache keyed on build time would evict itself on every
+    publish whether or not anything changed, and a cache keyed on nothing
+    would serve last week's lesson forever. Keyed on the content, the
+    cache turns over exactly when the content does.
+
+    Pages are network-first so a republished Sunday reaches a reader who
+    has signal. Handouts are never cached: a year of PDFs would fill a
+    phone, and they are what the browser's own download is for.
+    """
+    return (
+        "/* Generated by tools/stpaul/render/site.py. Do not edit. */\n"
+        f'const CACHE = "stpaul-{version}";\n'
+        f"const PRECACHE = {json.dumps(precache, indent=2)};\n"
+        """
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE)
+      // Individually, so one missing object cannot fail the whole install.
+      .then((c) => Promise.all(PRECACHE.map((u) => c.add(u).catch(() => null))))
+      .then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
+});
+
+// Handouts and archives are large and are what a download is for.
+const NEVER_CACHE = /\\.(?:pdf|docx|zip)$/i;
+
+self.addEventListener("fetch", (event) => {
+  const req = event.request;
+  if (req.method !== "GET") return;
+
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
+  if (NEVER_CACHE.test(url.pathname)) return;
+
+  const isPage = req.mode === "navigate" ||
+                 (req.headers.get("Accept") || "").includes("text/html");
+
+  if (isPage) {
+    // Network first: a reader with signal must see a republished Sunday.
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(req, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match(req).then((hit) => hit || caches.match("/")))
+    );
+    return;
+  }
+
+  // Everything else (the stylesheet, the icons, the manifest) is small,
+  // versioned with the cache, and safe to serve from it first.
+  event.respondWith(
+    caches.match(req).then((hit) => hit || fetch(req).then((res) => {
+      if (res && res.ok) {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(req, copy));
+      }
+      return res;
+    }))
+  );
+});
+"""
+    )

@@ -136,6 +136,12 @@ def render(lesson: Lesson, piece: Piece, source_hash: str, out_path: Path) -> Pa
     out_path.parent.mkdir(parents=True, exist_ok=True)
     doc = BaseDocTemplate(
         str(out_path), pagesize=LETTER,
+        # reportlab writes /CreationDate, /ModDate and a random document
+        # ID by default, so two builds of identical approved content
+        # produced two different PDFs. invariant fixes all three. Without
+        # it the claim that a rebuild proves a handout came from the
+        # approved bytes is not checkable on the printed artefact.
+        invariant=1,
         leftMargin=margin, rightMargin=margin, topMargin=margin, bottomMargin=margin,
         title=f"{piece_heading(lesson, piece)} · {lesson.meta.get('liturgical_day','')}",
         author="St. Paul Lutheran Church, Austin",

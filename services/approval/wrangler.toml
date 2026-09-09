@@ -64,3 +64,17 @@ ALLOWED_HD = "stpaulaustin.org"
 # --- secrets, never in git -----------------------------------------------
 #
 #   npx wrangler secret put GITHUB_TOKEN           # write to DATA_REPO only
+
+# Optional. When both of these are set, recording an approval fires a
+# `repository_dispatch` at the pipeline repository, which publishes the
+# Sunday to the site within about a minute instead of waiting for the
+# next scheduled run.
+#
+# Leave them unset and nothing breaks: .github/workflows/publish.yml runs
+# on a schedule as well, so an approval reaches the site either way. The
+# token this needs is a fine-grained PAT with Contents: read and Actions:
+# write on the pipeline repository only, and it is a secret:
+#
+#   npx wrangler secret put PUBLISH_DISPATCH_TOKEN
+#
+# PUBLISH_REPO = "Zuljita/StPaulSundaySchool-pipeline"

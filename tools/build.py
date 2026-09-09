@@ -39,7 +39,7 @@ from stpaul.approval import verify
 from stpaul.hashing import ALGORITHM, content_hash
 from stpaul.model import (CONTENT_DIR, DATA_ROOT, DIST_DIR, REPO_ROOT, all_sundays,
                           load_lesson, load_rules)
-from stpaul.render import appexport, docx_render, handoff, pdf_render, site
+from stpaul.render import appexport, docx_render, handoff, package, pdf_render, site
 from stpaul.rules import check_lesson, summarize
 
 
@@ -61,12 +61,23 @@ def shown_path(path: Path) -> str:
     return path.as_posix()
 
 
-def build_one(slug: str, *, draft: bool, skip_pdf: bool = False) -> tuple[bool, str]:
+# Returned instead of a build result when --approved-only passes over a
+# Sunday that is not approved. Distinct from a refusal because it is not
+# a failure: an unapproved Sunday is the normal state of most of a year.
+SKIPPED = "skipped"
+
+
+def build_one(slug: str, *, draft: bool, skip_pdf: bool = False,
+              approved_only: bool = False) -> tuple[bool | str, str]:
     lesson = load_lesson(slug)
     digest, _ = content_hash(CONTENT_DIR / slug)
     v = verify(slug)
 
     if not v.ok and not draft:
+        if approved_only:
+            # Not an error. The publish loop asks for every Sunday and
+            # expects most of them to be waiting on a pastor.
+            return SKIPPED, f"WAITING  {slug}\n         {v.status}: {v.detail}"
         return False, (
             f"REFUSED  {slug}\n"
             f"         {v.status}: {v.detail}\n"
@@ -90,6 +101,12 @@ def build_one(slug: str, *, draft: bool, skip_pdf: bool = False) -> tuple[bool, 
         written.append(docx_render.render(lesson, piece, digest, handouts / f"{stem}.docx"))
         if not skip_pdf:
             written.append(pdf_render.render(lesson, piece, digest, handouts / f"{stem}.pdf"))
+
+    # Last, because it archives what the renderers above just wrote.
+    zip_path = package.write(out_dir, slug, draft=draft,
+                             date_time=package.date_time_for(lesson.date))
+    if zip_path:
+        written.append(zip_path)
 
     findings = check_lesson(load_rules(), lesson)
     errors, warnings = summarize(findings)
@@ -130,6 +147,9 @@ def main() -> int:
     ap.add_argument("--draft", action="store_true",
                     help="build unapproved content into dist-draft/ as a watermarked proof")
     ap.add_argument("--skip-pdf", action="store_true", help="DOCX only, for a faster loop")
+    ap.add_argument("--approved-only", action="store_true",
+                    help="build what is approved and pass over what is not, "
+                         "without failing. For the publish loop.")
     args = ap.parse_args()
 
     slugs = all_sundays() if args.all else args.sunday
@@ -137,14 +157,23 @@ def main() -> int:
         ap.error("name a Sunday, or pass --all")
 
     ok = True
+    built = skipped = 0
     for slug in slugs:
         try:
-            good, msg = build_one(slug, draft=args.draft, skip_pdf=args.skip_pdf)
+            good, msg = build_one(slug, draft=args.draft, skip_pdf=args.skip_pdf,
+                                  approved_only=args.approved_only)
         except Exception as e:  # a renderer crash must not look like a refusal
             good, msg = False, f"ERROR    {slug}\n         {type(e).__name__}: {e}"
-        ok = ok and good
+        if good is SKIPPED:
+            skipped += 1
+        else:
+            ok = ok and good
+            built += 1 if good else 0
         print(msg)
         print()
+
+    if args.approved_only:
+        print(f"{built} built, {skipped} waiting on approval.")
 
     return 0 if ok else 1
 

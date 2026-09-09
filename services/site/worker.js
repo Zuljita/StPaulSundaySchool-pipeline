@@ -26,13 +26,16 @@
  * machinery publishable and the content private, and lets whoever holds
  * $STPAUL_DATA publish without any access to Cloudflare deploys.
  *
- * THERE IS NO JAVASCRIPT ON THE SITE
+ * THE ONLY SCRIPT IS THE SERVICE WORKER
  *
- * Not a script tag, not an inline handler. The pages are text. That is
- * what lets the CSP below forbid scripting outright, which is a real
- * control rather than a header someone added for the scanner: curriculum
- * text is escaped when it is rendered, and even if an escape were missed
- * the browser has been told never to execute anything.
+ * The pages carry no inline script and no event handlers: curriculum
+ * text is escaped when it is rendered, and the CSP below allows no
+ * inline execution, so even a missed escape cannot run. The single
+ * external script registers a service worker, which is what makes the
+ * site installable on a phone and readable without signal.
+ *
+ * That worker is an addition, never a dependency. Every page renders
+ * completely with JavaScript switched off.
  *
  * BINDINGS (wrangler.toml)
  *   SITE                   the R2 bucket publish.ps1 uploads to
@@ -42,12 +45,23 @@
 // A directory resolves to index.html; nothing else is rewritten.
 const INDEX = "index.html";
 
-// No script may run, and nothing may frame the page. Fonts come from
-// Google, which is where design_standards/tokens/fonts.css points; if the
-// church ever licenses desktop cuts and self-hosts them, tighten
-// style-src and font-src to 'self' at the same time.
+// Nothing inline may run, nothing may frame the page, and script may
+// only come from this origin, which is the registration file and the
+// service worker it registers. Fonts come from Google, which is where
+// design_standards/tokens/fonts.css points; if the church ever licenses
+// desktop cuts and self-hosts them, tighten style-src and font-src to
+// 'self' at the same time.
+//
+// 'unsafe-inline' must never appear here. The reason the escaping in
+// render/site.py is not the only line of defence is that this header
+// refuses to execute anything the page did not load from this origin as
+// a file.
 const CSP = [
   "default-src 'none'",
+  "script-src 'self'",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "connect-src 'self'",
   "style-src 'self' https://fonts.googleapis.com",
   "font-src https://fonts.gstatic.com",
   "img-src 'self' data:",
@@ -59,8 +73,14 @@ const CSP = [
 // HTML is short-lived so a republished Sunday reaches readers quickly.
 // Everything else revalidates on its ETag, which R2 supplies.
 function cacheControl(key) {
+  // The service worker decides how long every other object is held on a
+  // reader's phone, so it is the one file a stale copy could pin there.
+  // Always revalidated.
+  if (key === "sw.js") return "no-cache";
   if (key.endsWith(".html")) return "public, max-age=60, stale-while-revalidate=86400";
   if (key.startsWith("handouts/")) return "public, max-age=300";
+  // Icons are content-stable and cheap to revalidate on their ETag.
+  if (key.startsWith("assets/")) return "public, max-age=3600";
   return "public, max-age=600";
 }
 
