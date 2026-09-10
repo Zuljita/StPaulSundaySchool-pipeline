@@ -39,8 +39,17 @@ on:
   # made private, ~2,880 runs a month would land well past the free
   # allowance. At hourly it stays under it either way, and the only thing
   # given up is the worst case for a missed dispatch.
+  #
+  # Minute 23 rather than 0. The top of the hour is the busiest minute on
+  # the platform, GitHub delays scheduled runs under load, and its own
+  # documentation says so and advises picking a different minute.
+  # Measured here rather than assumed: of the nine hourly ticks after this
+  # workflow first reached main, exactly one ran, 34 minutes late, and the
+  # other eight never fired at all. The frequency is unchanged, so the
+  # cost reasoning above still holds unaltered; the only thing given up is
+  # a place in the longest queue on GitHub.
   schedule:
-    - cron: "0 * * * *"
+    - cron: "23 * * * *"
 
   # The fast path. The approval service fires this after it records a
   # decision, so an approval reaches the site in about a minute.
@@ -71,13 +80,28 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check out the curriculum
-        uses: actions/checkout@v4
-        with:
-          repository: Zuljita/StPaulSundaySchool
-          token: ${{ secrets.DATA_REPO_TOKEN }}
-          # Outside this checkout, so the private content cannot be
-          # committed here even by accident.
-          path: ${{ runner.temp }}/data
+        # Deliberately not actions/checkout. That action requires its
+        # `path:` to resolve inside $GITHUB_WORKSPACE, and the entire
+        # point of this checkout is to land outside it: runner.temp is a
+        # sibling of the workspace, not a child. The action rejects the
+        # path before it ever authenticates, so this step cannot work and
+        # never did. It shipped green because nothing tests a workflow,
+        # and it failed on the first scheduled run after merge.
+        #
+        # A plain clone can target any path, which keeps the property the
+        # action cannot express: the curriculum is not inside this
+        # checkout and so cannot be committed here even by accident.
+        # "Leave no curriculum behind" below still guards a genuinely
+        # separate tree rather than an ignored subdirectory of this one.
+        #
+        # The credential persists in the clone's origin URL, which is what
+        # the review/data push authenticates with further down, and it
+        # exists only in the runner's temp directory for the length of the
+        # job.
+        env:
+          GH_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
+        run: |
+          git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/Zuljita/StPaulSundaySchool.git" "${RUNNER_TEMP}/data"
 
       - uses: actions/setup-python@v5
         with:
