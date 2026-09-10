@@ -169,7 +169,7 @@ class SiteRenderTestCase(unittest.TestCase):
         """
         allowed = re.compile(
             r"</?(?:!doctype|html|head|meta|title|link|script|body|div|p|h1|h2|h3|"
-            r"a|span|ul|li|strong|em|br|blockquote|footer)\b[^<]*?>",
+            r"a|span|ul|li|strong|em|br|blockquote|footer|button)\b[^<]*?>",
             re.I)
         for name, html in self.written().items():
             if not name.endswith(".html"):
@@ -435,6 +435,44 @@ class DeterminismTestCase(unittest.TestCase):
                 self.assertEqual(src.group(1), "/assets/register-sw.js")
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_the_install_button_never_offers_what_the_browser_will_not_do(self):
+        """It ships hidden and only the script reveals it.
+
+        Chrome fires beforeinstallprompt when a site can actually be
+        installed; a button shown before that, or on a browser that never
+        fires it, is a button that does nothing when pressed. Safari is
+        exactly that browser, so on iOS this must stay invisible and
+        Share, then Add to Home Screen, remains the path.
+
+        With JavaScript off the button is equally inert and equally
+        hidden, which is the property the whole no-script budget exists
+        to protect.
+        """
+        tmp = Path(tempfile.mkdtemp(prefix="stpaul-site-"))
+        try:
+            content, digest = build_lesson(tmp)
+            lesson = load_lesson(SLUG, content_dir=content)
+            for path in site.write(lesson, tmp / "dist", digest):
+                if path.suffix != ".html":
+                    continue
+                html = path.read_text(encoding="utf-8")
+                tag = re.search(r"<button\b[^>]*>", html)
+                self.assertIsNotNone(tag, f"{path.name} has no install button")
+                self.assertIn("hidden", tag.group(0),
+                              f"{path.name} shows the install button before "
+                              f"the browser has offered")
+                self.assertIsNone(
+                    re.search(r"\son\w+\s*=", tag.group(0)),
+                    "the button must take its listener from the one script, "
+                    "not an inline handler")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+        self.assertIn("beforeinstallprompt", site.REGISTER_SW,
+                      "nothing reveals the button, so it can never appear")
+        self.assertIn("appinstalled", site.REGISTER_SW,
+                      "the offer must go away once it has been taken")
 
     def test_the_pages_still_read_with_javascript_off(self):
         """The worker is an addition, never a dependency.
