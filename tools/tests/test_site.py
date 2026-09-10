@@ -112,6 +112,25 @@ order: 3
 A card and a crayon.
 """
 
+# A second Pre-K piece, deliberately carrying the *same* title as the one
+# above. That is the shape real content takes: every piece in a Sunday is
+# titled after the lesson, so a list keyed on titles shows one phrase
+# repeated and cannot say which piece is which.
+THIRD_PIECE = """\
+---
+piece: prek-student-handout
+type: student_handout
+level: pre_k
+order: 4
+---
+
+# Pre-K Teacher's Guide
+
+## Draw
+
+A candle, and someone you would tell about it.
+"""
+
 
 def build_lesson(tmp: Path) -> tuple[Path, str]:
     """Write the fixture Sunday and return (content_dir, hash)."""
@@ -244,6 +263,25 @@ class SiteRenderTestCase(unittest.TestCase):
         names = set(self.written())
         for piece in self.lesson.pieces:
             self.assertIn(f"site/pieces/{site.piece_filename(piece)}", names)
+
+    def test_the_piece_list_names_the_kind_not_the_lesson(self):
+        """A teacher opening a Sunday has to tell their guide from the
+        student sheet sitting next to it. Both are titled after the
+        lesson, so a list keyed on the title reads as the same words twice
+        and answers nothing.
+        """
+        (self.content / SLUG / "pieces" / "04-prek-student-handout.md").write_text(
+            THIRD_PIECE, encoding="utf-8")
+        lesson = load_lesson(SLUG, content_dir=self.content)
+        html = site.render_sunday(lesson, self.digest)
+
+        names = [unescape(m) for m in re.findall(
+            r'<span class="name">\s*<a[^>]*>(.*?)</a>', html, re.S)]
+
+        self.assertEqual(names, ["Teacher's Guide", "Student Handout",
+                                 "Family Take-Home"])
+        self.assertEqual(len(names), len(set(names)),
+                         f"two pieces share a label: {names}")
 
     def test_the_index_entry_carries_what_the_front_page_lists(self):
         entry = json.loads(self.written()["site/site-entry.json"])
