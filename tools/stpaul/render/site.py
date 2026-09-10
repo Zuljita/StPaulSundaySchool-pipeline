@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import html
 import json
+from datetime import date
 import re
 from pathlib import Path
 
@@ -685,12 +686,34 @@ def render_sunday(lesson: Lesson, source_hash: str, *, draft: bool = False) -> s
     return _shell(_day_title(lesson), body, draft=draft)
 
 
-def render_index(entries: list[dict], *, church: str = "St. Paul Lutheran Church, Austin") -> str:
-    """The site's front page: every published Sunday, newest first.
+def render_index(entries: list[dict], *, as_of: date,
+                 church: str = "St. Paul Lutheran Church, Austin") -> str:
+    """The site's front page: this week's Sunday, then what is coming,
+    then everything already taught.
 
     `entries` are the `site-entry.json` files written beside each built
     Sunday, so the list is assembled from build output rather than from a
     second read of `content/`.
+
+    WHY THE DATE IS AN ARGUMENT
+
+    `as_of` is passed in and never read from a clock here. Everything
+    under render/ has to produce the same bytes from the same inputs, and
+    a front page that quietly reordered itself between two builds would
+    break that on the one file most likely to be compared. The caller
+    decides what day it is; publish_site.py is where that decision lives,
+    because that is where the church's timezone is known.
+
+    WHY A SUNDAY STAYS CURRENT ALL WEEK
+
+    Sorting by date alone put a Sunday nobody has taught yet above the
+    one being taught now. What a reader wants first is the lesson in use,
+    and it stays in use for the whole week after it is taught: the family
+    take-home is worked through at home, so demoting it on Monday buries
+    a sheet a family is still in the middle of.
+
+    So the current Sunday is the latest one on or before `as_of`, which
+    holds it at the top until `as_of` reaches the next one.
     """
     body = [
         '<div class="masthead">',
@@ -700,8 +723,25 @@ def render_index(entries: list[dict], *, church: str = "St. Paul Lutheran Church
         "</div>",
     ]
 
-    ordered = sorted(entries, key=lambda e: (str(e.get("date", "")), str(e.get("slug", ""))),
-                     reverse=True)
+    def key(e: dict) -> tuple[str, str]:
+        return (str(e.get("date", "")), str(e.get("slug", "")))
+
+    cutoff = as_of.isoformat()
+    dated = [e for e in entries if str(e.get("date", ""))]
+
+    # Ascending, so the last element on or before the cutoff is the one
+    # in use and everything before it has already been taught.
+    taught = sorted((e for e in dated if str(e["date"]) <= cutoff), key=key)
+    coming = sorted((e for e in dated if str(e["date"]) > cutoff), key=key)
+
+    current = taught[-1:]
+    earlier = list(reversed(taught[:-1]))
+
+    # A Sunday with no date cannot be placed in the year at all, so it
+    # goes last rather than being guessed at.
+    undated = sorted((e for e in entries if not str(e.get("date", ""))), key=key)
+
+    ordered = current + coming + earlier + undated
 
     if not ordered:
         body.append("<p>No lessons have been published yet.</p>")
