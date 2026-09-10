@@ -2,6 +2,17 @@ name = "stpaul-sundayschool-site"
 main = "worker.js"
 compatibility_date = "2026-01-01"
 
+# Off, explicitly. Cron triggers elsewhere in this account require a
+# workers.dev subdomain to exist, and once it does this Worker would
+# otherwise also answer at stpaul-sundayschool-site.<subdomain>.workers.dev.
+#
+# Nothing here is secret, so this is tidiness rather than a control: one
+# address for one site, so a link a parent is given is the link everyone
+# else has, and the manifest, the service worker scope and the CSP all
+# describe the origin the site is actually served from.
+workers_dev = false
+
+
 # No nodejs_compat. This Worker uses fetch, Headers, URL and an R2
 # binding, all of which are standard, and adding a runtime flag it does
 # not need is a change to the runtime for no reason.
