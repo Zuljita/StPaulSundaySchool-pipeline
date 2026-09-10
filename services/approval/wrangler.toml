@@ -10,6 +10,21 @@ compatibility_date = "2026-01-01"
 # that can watch the deploy rather than folded into this one.
 compatibility_flags = ["nodejs_compat"]
 
+# The workers.dev subdomain is off, explicitly.
+#
+# Cron triggers require the account to have one, so it has to exist. That
+# is an account-level fact and it would otherwise publish this Worker a
+# second time at stpaul-approval.<subdomain>.workers.dev.
+#
+# This service must have exactly one origin. review/README.md gives the
+# reason: schoolreview.stpaulaustin.org is authorised on a Google OAuth
+# client that decides who may approve doctrine, ALLOWED_ORIGIN is checked
+# against that one name, and an origin is a trust boundary. A second
+# address reaching the same code is a second door into it, and the fact
+# that nobody was told the address is not a control.
+workers_dev = false
+
+
 # The review app is bundled into the Worker as text and served from "/".
 # One origin for the page and the API means no CORS pair to keep in sync,
 # one custom domain, and no way for the two to disagree about where the
