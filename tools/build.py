@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Render approved content into handouts and the app export.
+"""Render approved content into handouts, the web site and the app export.
 
     python tools/build.py 2026-09-20-trinity-16
     python tools/build.py --all
@@ -8,8 +8,13 @@
 This is the part of the pipeline below the freeze line. It does not call
 a language model, a network service, or anything with an opinion. It is a
 pure function of the approved bytes, which is what makes the printed
-handouts and the app export the same text rather than two independent
-retellings of it.
+handouts, the public site and the app export the same text rather than
+independent retellings of it.
+
+The site is rendered here, in this pass, for that reason. An export
+handed to another system to re-derive is how the handouts and the app
+came to disagree; a renderer cannot disagree with its siblings, because
+there is only one parse.
 
 By default it refuses to build a Sunday whose content is not currently
 approved. --draft builds anyway, into dist-draft/, with DRAFT in every
@@ -32,17 +37,47 @@ if hasattr(sys.stdout, "reconfigure"):      # Windows consoles default to cp1252
 
 from stpaul.approval import verify
 from stpaul.hashing import ALGORITHM, content_hash
-from stpaul.model import CONTENT_DIR, DIST_DIR, REPO_ROOT, all_sundays, load_lesson, load_rules
-from stpaul.render import appexport, docx_render, handoff, pdf_render
+from stpaul.model import (CONTENT_DIR, DATA_ROOT, DIST_DIR, REPO_ROOT, all_sundays,
+                          load_lesson, load_rules)
+from stpaul.render import appexport, docx_render, handoff, package, pdf_render, site
 from stpaul.rules import check_lesson, summarize
 
 
-def build_one(slug: str, *, draft: bool, skip_pdf: bool = False) -> tuple[bool, str]:
+def shown_path(path: Path) -> str:
+    """A path to print, relative to whichever root actually contains it.
+
+    A release is written under the data root and a draft under the
+    pipeline root, so neither one is reliably inside the other. Making
+    every path relative to the pipeline root raised ValueError on every
+    real build with $STPAUL_DATA pointing at a separate checkout, which
+    is the documented layout: the files were all written, and then the
+    line reporting them threw and the build read as ERROR.
+    """
+    for root in (DATA_ROOT, REPO_ROOT):
+        try:
+            return path.relative_to(root).as_posix()
+        except ValueError:
+            continue
+    return path.as_posix()
+
+
+# Returned instead of a build result when --approved-only passes over a
+# Sunday that is not approved. Distinct from a refusal because it is not
+# a failure: an unapproved Sunday is the normal state of most of a year.
+SKIPPED = "skipped"
+
+
+def build_one(slug: str, *, draft: bool, skip_pdf: bool = False,
+              approved_only: bool = False) -> tuple[bool | str, str]:
     lesson = load_lesson(slug)
     digest, _ = content_hash(CONTENT_DIR / slug)
     v = verify(slug)
 
     if not v.ok and not draft:
+        if approved_only:
+            # Not an error. The publish loop asks for every Sunday and
+            # expects most of them to be waiting on a pastor.
+            return SKIPPED, f"WAITING  {slug}\n         {v.status}: {v.detail}"
         return False, (
             f"REFUSED  {slug}\n"
             f"         {v.status}: {v.detail}\n"
@@ -58,6 +93,7 @@ def build_one(slug: str, *, draft: bool, skip_pdf: bool = False) -> tuple[bool, 
     written: list[Path] = []
     written += handoff.write(lesson, out_dir, digest)
     written += appexport.write(lesson, out_dir, digest)
+    written += site.write(lesson, out_dir, digest, draft=draft)
 
     handouts = out_dir / "handouts"
     for piece in lesson.pieces:
@@ -65,6 +101,12 @@ def build_one(slug: str, *, draft: bool, skip_pdf: bool = False) -> tuple[bool, 
         written.append(docx_render.render(lesson, piece, digest, handouts / f"{stem}.docx"))
         if not skip_pdf:
             written.append(pdf_render.render(lesson, piece, digest, handouts / f"{stem}.pdf"))
+
+    # Last, because it archives what the renderers above just wrote.
+    zip_path = package.write(out_dir, slug, draft=draft,
+                             date_time=package.date_time_for(lesson.date))
+    if zip_path:
+        written.append(zip_path)
 
     findings = check_lesson(load_rules(), lesson)
     errors, warnings = summarize(findings)
@@ -90,7 +132,7 @@ def build_one(slug: str, *, draft: bool, skip_pdf: bool = False) -> tuple[bool, 
     lines = [
         f"{'DRAFT   ' if draft else 'BUILT   '}{slug}",
         f"         source {digest}",
-        f"         {len(written)} file(s) -> {out_dir.relative_to(REPO_ROOT).as_posix()}/",
+        f"         {len(written)} file(s) -> {shown_path(out_dir)}/",
     ]
     if draft and not v.ok:
         lines.append(f"         NOT APPROVED ({v.status}). Proof only, do not distribute.")
@@ -105,6 +147,9 @@ def main() -> int:
     ap.add_argument("--draft", action="store_true",
                     help="build unapproved content into dist-draft/ as a watermarked proof")
     ap.add_argument("--skip-pdf", action="store_true", help="DOCX only, for a faster loop")
+    ap.add_argument("--approved-only", action="store_true",
+                    help="build what is approved and pass over what is not, "
+                         "without failing. For the publish loop.")
     args = ap.parse_args()
 
     slugs = all_sundays() if args.all else args.sunday
@@ -112,14 +157,23 @@ def main() -> int:
         ap.error("name a Sunday, or pass --all")
 
     ok = True
+    built = skipped = 0
     for slug in slugs:
         try:
-            good, msg = build_one(slug, draft=args.draft, skip_pdf=args.skip_pdf)
+            good, msg = build_one(slug, draft=args.draft, skip_pdf=args.skip_pdf,
+                                  approved_only=args.approved_only)
         except Exception as e:  # a renderer crash must not look like a refusal
             good, msg = False, f"ERROR    {slug}\n         {type(e).__name__}: {e}"
-        ok = ok and good
+        if good is SKIPPED:
+            skipped += 1
+        else:
+            ok = ok and good
+            built += 1 if good else 0
         print(msg)
         print()
+
+    if args.approved_only:
+        print(f"{built} built, {skipped} waiting on approval.")
 
     return 0 if ok else 1
 

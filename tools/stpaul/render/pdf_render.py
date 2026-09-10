@@ -27,8 +27,8 @@ from reportlab.platypus import (BaseDocTemplate, Flowable, Frame, PageTemplate,
 
 from ..model import Lesson, Piece
 from . import brand
+from .blocks import blocks
 from .handoff import piece_heading
-from .docx_render import _blocks
 
 # Montserrat and Lora are not bundled with reportlab. Rather than ship
 # font binaries, map to the closest core fonts and record that the PDF is
@@ -136,6 +136,12 @@ def render(lesson: Lesson, piece: Piece, source_hash: str, out_path: Path) -> Pa
     out_path.parent.mkdir(parents=True, exist_ok=True)
     doc = BaseDocTemplate(
         str(out_path), pagesize=LETTER,
+        # reportlab writes /CreationDate, /ModDate and a random document
+        # ID by default, so two builds of identical approved content
+        # produced two different PDFs. invariant fixes all three. Without
+        # it the claim that a rebuild proves a handout came from the
+        # approved bytes is not checkable on the printed artefact.
+        invariant=1,
         leftMargin=margin, rightMargin=margin, topMargin=margin, bottomMargin=margin,
         title=f"{piece_heading(lesson, piece)} · {lesson.meta.get('liturgical_day','')}",
         author="St. Paul Lutheran Church, Austin",
@@ -167,7 +173,7 @@ def render(lesson: Lesson, piece: Piece, source_hash: str, out_path: Path) -> Pa
 
     for section in piece.sections:
         story += [Spacer(1, 4), SectionBar(section.heading, frame_w, palette), Spacer(1, 6)]
-        for kind, text in _blocks(section.body):
+        for kind, text in blocks(section.body):
             if kind == "rule":
                 continue  # §6
             if kind == "bullet":
