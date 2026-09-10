@@ -45,7 +45,7 @@ from pathlib import Path
 from ..model import Lesson, Piece
 from .appexport import LEVEL_HEADINGS, LEVEL_ORDER
 from .blocks import blocks
-from .handoff import PIECE_LABELS, piece_heading
+from .handoff import LEVEL_LABELS, PIECE_LABELS, piece_heading
 
 # Inline emphasis, matched the same way docx_render matches it.
 INLINE = re.compile(r"(\*\*.+?\*\*|\*.+?\*)")
@@ -58,6 +58,12 @@ HANDOUT_ROOT = "/handouts"
 # chrome colour; paper is what a page is painted on before the CSS lands.
 THEME_COLOR = "082858"
 BACKGROUND_COLOR = "fffefb"
+
+# The piece list's own id, and the key the catch-all group files under.
+# Both are anchors a teacher may bookmark, so they are constants rather
+# than strings written twice.
+PIECES_ID = "pieces"
+OTHER_LEVEL = "other"
 
 APP_NAME = "St. Paul Sunday School"
 APP_SHORT_NAME = "Sunday School"
@@ -79,6 +85,12 @@ STYLESHEET = """\
 0,8..60,600;1,8..60,400&display=swap");
 
 :root {
+  /* Both palettes are real, so say so: this is what paints the canvas
+     before the CSS lands and what styles the scrollbars and any form
+     control. Without it a dark reader gets a white flash and light
+     scrollbars framing a dark page. */
+  color-scheme: light dark;
+
   --navy: #082858;
   --blue: #2858b8;
   --blue-light: #88c8d8;
@@ -89,6 +101,15 @@ STYLESHEET = """\
   --paper: #fffefb;
   --tint: #eef7fa;
   --hairline-soft: #cfe0ea;
+
+  /* The draft banner is the one filled block in the stylesheet, so it
+     needs a background and an ink of its own. --red cannot serve: it is
+     an ink colour, picked to be legible *on* paper, and in dark mode it
+     lightens to stay that way. White on the lightened red measured
+     2.3:1, under the 4.5:1 floor, on the one banner whose whole job is
+     to stop an unapproved proof being handed out. */
+  --draft-bg: #a81818;
+  --draft-ink: #ffffff;
 
   --font-display: "Instrument Serif", Georgia, serif;
   --font-body: "Source Serif 4", Georgia, serif;
@@ -110,6 +131,12 @@ STYLESHEET = """\
     --paper: #14161a;
     --tint: #1c2129;
     --hairline-soft: #2b3542;
+
+    /* Deep red rather than the lightened ink red: on a dark page a
+       #ff8a8a bar is the brightest thing on the screen, and this is
+       read on a phone in a pew. 7.9:1. */
+    --draft-bg: #8c1414;
+    --draft-ink: #ffe4e4;
   }
 }
 
@@ -280,9 +307,49 @@ li { margin-bottom: 0.35rem; }
 .package .note {
   display: block;
   font-size: 0.8125rem;
-  color: var(--text-meta);
+  color: var(--ink-muted);
   margin-top: 0.2rem;
 }
+
+/* --- grade filter ------------------------------------------------- */
+/* Anchors and :target, never script. The site is allowed exactly one
+   JavaScript file and it registers the service worker; a second one
+   would cost either an inline script or another line in the no-script
+   budget, and a link costs neither.
+   A browser without :has() drops these two rules and shows every level,
+   which is the page exactly as it stood before the filter existed. */
+
+.levelfilter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 1.25rem 0 1.5rem;
+}
+.chip {
+  font-family: var(--font-label);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  color: var(--blue);
+  background: var(--paper);
+  border: 1px solid var(--hairline-soft);
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+}
+.chip:hover, .chip:focus-visible {
+  border-color: var(--blue);
+  background: var(--tint);
+}
+
+/* Both of these are :has() rules, and the second one keeps the prefix on
+   purpose. Dropping it reads like a tidy-up and is not: the hide scores
+   (0,4,0) and a bare `.levels > .level:target` scores (0,3,0), so the
+   hide wins and a filtered page renders with no pieces on it at all. */
+.levels:has(> .level:target) > .level { display: none; }
+.levels:has(> .level:target) > .level:target { display: block; }
 
 /* --- the Sunday list --------------------------------------------- */
 
@@ -342,8 +409,8 @@ footer .colophon {
 }
 
 .draft-banner {
-  background: var(--red);
-  color: #fff;
+  background: var(--draft-bg);
+  color: var(--draft-ink);
   font-family: var(--font-label);
   font-size: 0.75rem;
   font-weight: 600;
@@ -363,6 +430,35 @@ footer .colophon {
   margin-bottom: 1.5rem;
 }
 """
+
+
+def _chip_active_rules() -> str:
+    """Which chip is lit, one selector per level.
+
+    CSS cannot tell that a chip's href names the level that is targeted,
+    so the pairing has to be spelled out. It is generated from
+    LEVEL_ORDER rather than typed out, so a level added there gets a chip
+    that lights up without anyone remembering this block exists. That is
+    the same reason the piece list is built from LEVEL_ORDER too: a list
+    of levels kept in two places is a list of levels that will disagree.
+
+    Every selector in the group uses :has(), so a browser without it
+    drops the whole group and the chips simply stay unlit. Nothing is
+    hidden by that, because the rules that hide are :has() rules too.
+    """
+    selectors = ",\n".join(
+        f'.wrap:has(#level-{key}:target) .chip[href="#level-{key}"]'
+        for key in (*LEVEL_ORDER, OTHER_LEVEL))
+    return (
+        "\n" + selectors + " {\n"
+        "  color: var(--paper);\n"
+        "  background: var(--navy);\n"
+        "  border-color: var(--navy);\n"
+        "}\n"
+    )
+
+
+STYLESHEET += _chip_active_rules()
 
 
 # ---------------------------------------------------------------------
@@ -562,6 +658,63 @@ def _date_display(lesson: Lesson) -> str:
     return str(lesson.meta.get("date_display") or lesson.meta.get("date") or "")
 
 
+def _level_groups(lesson: Lesson) -> list[tuple[str, str, list[Piece]]]:
+    """The Sunday's pieces as (key, heading, pieces), in level order.
+
+    Levels in the order the export standard fixes, then the two all-ages
+    pieces, then anything the manifest grows later. Sorting by a known
+    order rather than by whatever the filesystem returned is what keeps
+    two builds byte-identical.
+
+    The key is what the grade filter anchors on, and it is the level name
+    rather than the heading on purpose: a heading is prose and may be
+    reworded, and rewording it must not break a bookmark a teacher is
+    holding.
+    """
+    groups: list[tuple[str, str, list[Piece]]] = []
+    for level in LEVEL_ORDER:
+        pieces = sorted((p for p in lesson.pieces if p.level == level),
+                        key=lambda p: p.order)
+        if pieces:
+            groups.append((level, LEVEL_HEADINGS[level], pieces))
+
+    rest = sorted((p for p in lesson.pieces if p.level not in LEVEL_ORDER),
+                  key=lambda p: p.order)
+    if rest:
+        groups.append((OTHER_LEVEL, "All Ages", rest))
+
+    return groups
+
+
+def _level_filter(groups: list[tuple[str, str, list[Piece]]]) -> list[str]:
+    """A row of grade chips that narrows the piece list to one level.
+
+    Links and :target, so this costs no JavaScript and works with it off.
+    What it buys beyond the click is that the choice is in the URL: a
+    superintendent can send the Intermediate teacher the four pieces she
+    teaches rather than the page they are all on.
+
+    The chips carry LEVEL_LABELS, which is the short wording the handouts
+    and the app export already use, rather than the long LEVEL_HEADINGS
+    the group headings carry. Neither is invented here; a level named two
+    ways by two files is how a rename ends up half-done.
+
+    One group needs no filter, so a Sunday with one gets none.
+    """
+    if len(groups) < 2:
+        return []
+
+    chips = [f'<a class="chip" href="#{PIECES_ID}">Show all</a>']
+    for key, heading, _pieces in groups:
+        label = LEVEL_LABELS.get(key) or heading
+        chips.append(
+            f'<a class="chip" href="#level-{_esc(key)}">{_esc(label)}</a>')
+
+    return ['<nav class="levelfilter" aria-label="Filter by grade level">',
+            *chips,
+            "</nav>"]
+
+
 def render_piece(lesson: Lesson, piece: Piece, source_hash: str,
                  *, draft: bool = False) -> str:
     m = lesson.meta
@@ -594,6 +747,7 @@ def render_piece(lesson: Lesson, piece: Piece, source_hash: str,
 
 def render_sunday(lesson: Lesson, source_hash: str, *, draft: bool = False) -> str:
     m = lesson.meta
+    groups = _level_groups(lesson)
 
     body = [
         '<div class="masthead">',
@@ -607,6 +761,13 @@ def render_sunday(lesson: Lesson, source_hash: str, *, draft: bool = False) -> s
     if m.get("translation"):
         body.append(f"<span>{_esc(m['translation'])}</span>")
     body += ["</p>", "</div>"]
+
+    # At the top, because it is a way past the reading as well as a
+    # filter: the piece list sits below the text and the Law and Gospel
+    # notes, and a teacher who opened this to find her own handout should
+    # not have to scroll through a lesson to reach it. Each chip is an
+    # anchor, so it scrolls to the list and narrows it in one tap.
+    body += _level_filter(groups)
 
     if m.get("theme"):
         body.append(f'<p class="theme">{_inline(str(m["theme"]))}</p>')
@@ -642,24 +803,11 @@ def render_sunday(lesson: Lesson, source_hash: str, *, draft: bool = False) -> s
         f'{_esc(zip_name)}">Download the whole week</a> '
         f'<span class="note">every handout, PDF and Word, in one archive</span></p>')
 
-    # Levels in the order the export standard fixes, then the two
-    # all-ages pieces, then anything the manifest grows later. Sorting by
-    # a known order rather than by whatever the filesystem returned is
-    # what keeps two builds byte-identical.
-    grouped: list[tuple[str, list[Piece]]] = []
-    for level in LEVEL_ORDER:
-        pieces = sorted((p for p in lesson.pieces if p.level == level),
-                        key=lambda p: p.order)
-        if pieces:
-            grouped.append((LEVEL_HEADINGS[level], pieces))
-
-    rest = sorted((p for p in lesson.pieces if p.level not in LEVEL_ORDER),
-                  key=lambda p: p.order)
-    if rest:
-        grouped.append(("All Ages", rest))
-
-    for label, pieces in grouped:
-        body += [f'<div class="level"><h3>{_esc(label)}</h3>', '<ul class="pieces">']
+    body.append(f'<div class="levels" id="{PIECES_ID}">')
+    for key, heading, pieces in groups:
+        body += [f'<div class="level" id="level-{_esc(key)}">'
+                 f'<h3>{_esc(heading)}</h3>',
+                 '<ul class="pieces">']
         for p in pieces:
             stem = f"{p.order:02d}-{p.id}" + ("-DRAFT" if draft else "")
             # Which piece this is, not what the lesson is called. Every
@@ -681,6 +829,7 @@ def render_sunday(lesson: Lesson, source_hash: str, *, draft: bool = False) -> s
                 "</li>",
             ]
         body += ["</ul>", "</div>"]
+    body.append("</div>")
 
     body += _colophon(lesson, source_hash)
     return _shell(_day_title(lesson), body, draft=draft)

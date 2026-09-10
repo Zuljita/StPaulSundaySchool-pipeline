@@ -189,7 +189,7 @@ class SiteRenderTestCase(unittest.TestCase):
         """
         allowed = re.compile(
             r"</?(?:!doctype|html|head|meta|title|link|script|body|div|p|h1|h2|h3|"
-            r"a|span|ul|li|strong|em|br|blockquote|footer|button)\b[^<]*?>",
+            r"a|span|ul|li|strong|em|br|blockquote|footer|button|nav)\b[^<]*?>",
             re.I)
         for name, html in self.written().items():
             if not name.endswith(".html"):
@@ -569,6 +569,226 @@ class DeterminismTestCase(unittest.TestCase):
             self.assertIn(digest, body)
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+
+
+class GradeFilterTestCase(unittest.TestCase):
+    """The grade filter narrows the piece list to one level.
+
+    It is links and :target rather than script, so what is tested here is
+    mostly that it stays that way: the site is allowed exactly one
+    JavaScript file, and the reason the filter hides with CSS instead of
+    removing with JavaScript is that every piece must still be in the
+    page for a reader who has neither.
+    """
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="stpaul-site-"))
+        self.content, self.digest = build_lesson(self.tmp)
+        self.lesson = load_lesson(SLUG, content_dir=self.content)
+        self.html = site.render_sunday(self.lesson, self.digest)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _chips(self) -> list[str]:
+        nav = re.search(r'<nav class="levelfilter".*?</nav>', self.html, re.S)
+        self.assertIsNotNone(nav, "the Sunday page has no grade filter")
+        return re.findall(r'href="(#[^"]+)"', nav.group(0))
+
+    def test_a_chip_is_offered_for_every_level_the_sunday_has(self):
+        groups = site._level_groups(self.lesson)
+        self.assertGreater(len(groups), 1, "fixture needs two levels to filter")
+        expected = [f"#{site.PIECES_ID}"] + [f"#level-{k}" for k, _, _ in groups]
+        self.assertEqual(self._chips(), expected)
+
+    def test_no_chip_points_at_an_anchor_the_page_does_not_have(self):
+        """A chip onto a missing id filters nothing and says nothing."""
+        ids = set(re.findall(r'id="([^"]+)"', self.html))
+        for href in self._chips():
+            self.assertIn(href.lstrip("#"), ids,
+                          f"{href} is a chip onto an id no element carries")
+
+    def test_filtering_hides_pieces_without_removing_them(self):
+        """Every piece stays in the page whatever the filter is set to.
+
+        CSS hides; it does not delete. That is the property that keeps a
+        printed page, a reader with an old browser and a search engine
+        seeing all twelve pieces rather than one level of them.
+        """
+        for piece in self.lesson.pieces:
+            self.assertIn(site.piece_filename(piece), self.html,
+                          f"{piece.id} is not on the Sunday page at all")
+
+    def test_the_filter_is_links_and_carries_no_script(self):
+        nav = re.search(r'<nav class="levelfilter".*?</nav>', self.html, re.S)
+        self.assertNotIn("<script", nav.group(0))
+        self.assertIsNone(re.search(r"\son\w+\s*=", nav.group(0)),
+                          "the filter must not grow an event handler")
+        self.assertEqual(self.html.count("<script"), 1,
+                         "the filter added a second script to the page")
+
+    def test_a_sunday_with_one_level_gets_no_filter(self):
+        """Nothing to choose between, so nothing to choose from."""
+        groups = [("pre_k", "Pre-K & Kindergarten", list(self.lesson.pieces))]
+        self.assertEqual(site._level_filter(groups), [])
+
+    def test_a_chip_is_named_the_way_the_handouts_name_the_level(self):
+        """The wording is LEVEL_LABELS, not a third spelling.
+
+        CLAUDE.md: do not change what a thing is called in one place
+        only. A chip reading "Middle School" over a group reading
+        something else is the small version of that.
+        """
+        nav = re.search(r'<nav class="levelfilter".*?</nav>', self.html, re.S)
+        named = dict(re.findall(r'href="#level-([^"]+)">([^<]*)</a>',
+                                nav.group(0)))
+        for key, heading, _pieces in site._level_groups(self.lesson):
+            expected = handoff.LEVEL_LABELS.get(key) or heading
+            self.assertEqual(unescape(named[key]), expected,
+                             f"the {key} chip is not named {expected!r}")
+
+    def test_the_chosen_level_outranks_the_rule_that_hides_the_others(self):
+        """Both filter rules carry the :has() prefix, and must keep it.
+
+        Dropping it from the second reads like a tidy-up and is not.
+        `.levels:has(> .level:target) > .level` scores (0,4,0); a bare
+        `.levels > .level:target` scores (0,3,0), so the hide would beat
+        the show and every level would disappear at once. A filtered page
+        rendered with nothing on it, in a real browser, before this line
+        was written.
+
+        Specificity is not visible to a renderer test, so what is checked
+        is the shape the browser was verified against.
+        """
+        self.assertIn(".levels:has(> .level:target) > .level {",
+                      site.STYLESHEET, "the rule that hides the other levels")
+        self.assertIn(".levels:has(> .level:target) > .level:target {",
+                      site.STYLESHEET,
+                      "the rule that shows the chosen level must keep its "
+                      ":has() prefix or it loses to the one above")
+
+    def test_two_renders_of_the_filter_are_byte_identical(self):
+        again = site.render_sunday(self.lesson, self.digest)
+        self.assertEqual(self.html, again)
+
+
+class PaletteTestCase(unittest.TestCase):
+    """Dark mode is a token swap, and that only holds if every colour is
+    a token.
+
+    The draft banner is why this is a test and not a habit. It wrote
+    `color: #fff` literally over `background: var(--red)`. In light that
+    is white on #a81818 and measures 7.5:1. In dark, --red lightens to
+    #ff8a8a so it can still be read as ink on a dark page, the literal
+    white does not move with it, and the pair measures 2.3:1: under the
+    4.5:1 floor, on the one banner whose whole job is to say "Draft
+    proof. Not approved. Do not distribute."
+
+    Nobody reads a stylesheet in two palettes at once, so the shape of
+    that bug is checked as well as the instance.
+    """
+
+    AA_NORMAL = 4.5
+
+    # Every place the stylesheet sets ink on a filled background, as
+    # (what it is, ink token, background token). A pair listed here is
+    # checked in both palettes; a pair not listed is not checked at all,
+    # so a new filled block belongs in this list.
+    PAIRS = [
+        ("the draft banner", "--draft-ink", "--draft-bg"),
+        ("a resting grade chip", "--blue", "--paper"),
+        ("a hovered grade chip", "--blue", "--tint"),
+        ("the current grade chip", "--paper", "--navy"),
+    ]
+
+    @staticmethod
+    def _luminance(colour: str) -> float:
+        """WCAG 2.1 relative luminance of a hex colour."""
+        h = colour.strip().lstrip("#")
+        if len(h) == 3:
+            h = "".join(c * 2 for c in h)
+        channels = []
+        for i in (0, 2, 4):
+            c = int(h[i:i + 2], 16) / 255
+            channels.append(c / 12.92 if c <= 0.04045
+                            else ((c + 0.055) / 1.055) ** 2.4)
+        r, g, b = channels
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+    @classmethod
+    def _contrast(cls, fg: str, bg: str) -> float:
+        a, b = cls._luminance(fg), cls._luminance(bg)
+        hi, lo = max(a, b), min(a, b)
+        return (hi + 0.05) / (lo + 0.05)
+
+    @staticmethod
+    def _palettes() -> tuple[dict, dict]:
+        """The light tokens, and the dark ones resolved over them.
+
+        Dark redefines only what it changes, which is the point of the
+        swap and also how a pair can come apart: inherit the background
+        and override the ink, or the reverse, and the two stop agreeing.
+        Resolving the way the cascade does is what makes that visible.
+        """
+        css = site.STYLESHEET
+        dark_at = css.index("@media (prefers-color-scheme: dark)")
+        light: dict[str, str] = {}
+        dark: dict[str, str] = {}
+        for block in re.finditer(r":root[^{]*\{([^{}]*)\}", css, re.S):
+            into = dark if block.start() > dark_at else light
+            into.update(re.findall(r"(--[\w-]+)\s*:\s*([^;]+);", block.group(1)))
+        self_check = light and dark
+        assert self_check, "the stylesheet no longer has two :root blocks"
+        return light, {**light, **dark}
+
+    def test_every_filled_block_is_legible_in_both_palettes(self):
+        for name, palette in zip(("light", "dark"), self._palettes()):
+            for what, ink_token, bg_token in self.PAIRS:
+                for token in (ink_token, bg_token):
+                    self.assertIn(
+                        token, palette,
+                        f"the {name} palette has no {token}, so {what} is "
+                        f"taking a colour from somewhere this cannot check.")
+                ink, bg = palette[ink_token], palette[bg_token]
+                ratio = self._contrast(ink, bg)
+                self.assertGreaterEqual(
+                    ratio, self.AA_NORMAL,
+                    f"in {name}, {what} sets {ink.strip()} on {bg.strip()}, "
+                    f"which is {ratio:.2f}:1. WCAG AA asks "
+                    f"{self.AA_NORMAL}:1 for text this size.")
+
+    def test_every_token_a_rule_asks_for_is_defined(self):
+        """A var() naming nothing is silent.
+
+        `.package .note` asked for --text-meta, which no palette ever
+        defined, so the line took whatever colour it inherited instead of
+        the muted grey it was written for. Nothing errors, nothing logs,
+        and the page looks close enough to right that it stayed that way.
+        """
+        light, dark = self._palettes()
+        used = set(re.findall(r"var\(\s*(--[\w-]+)", site.STYLESHEET))
+        for name, palette in (("light", light), ("dark", dark)):
+            missing = sorted(used - set(palette))
+            self.assertEqual(
+                missing, [],
+                f"the {name} palette never defines {missing}, so every rule "
+                f"asking for it silently falls back to an inherited value.")
+
+    def test_no_colour_is_written_outside_the_palette(self):
+        """Only the two :root blocks may name a colour.
+
+        A literal in a rule does not move when the palette does, so it is
+        correct in one mode and unreviewed in the other. Anything that
+        needs a colour needs a token, including a shadow.
+        """
+        stripped = re.sub(r":root[^{]*\{[^{}]*\}", "", site.STYLESHEET, flags=re.S)
+        stray = re.findall(r"#[0-9a-fA-F]{3,8}\b|\brgba?\(", stripped)
+        self.assertEqual(
+            stray, [],
+            f"{stray} is written into a rule rather than taken from a "
+            f"token, so it stays put when the palette flips. Add a token "
+            f"to both :root blocks and use it.")
+
 
 class ReproducibleOutputTestCase(unittest.TestCase):
     """Two builds of the same approved bytes must produce the same files.
