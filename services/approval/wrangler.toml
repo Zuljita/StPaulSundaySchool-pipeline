@@ -65,16 +65,38 @@ ALLOWED_HD = "stpaulaustin.org"
 #
 #   npx wrangler secret put GITHUB_TOKEN           # write to DATA_REPO only
 
-# Optional. When both of these are set, recording an approval fires a
-# `repository_dispatch` at the pipeline repository, which publishes the
-# Sunday to the site within about a minute instead of waiting for the
-# next scheduled run.
+# Required, not optional. Together these let the Worker fire a
+# `repository_dispatch` at the pipeline repository, which is how an
+# approval reaches the site and how the week turns over on Saturday
+# night.
 #
-# Leave them unset and nothing breaks: .github/workflows/publish.yml runs
-# on a schedule as well, so an approval reaches the site either way. The
-# token this needs is a fine-grained PAT with Contents: read and Actions:
-# write on the pipeline repository only, and it is a secret:
+# This used to be described as optional because publish.yml runs on a
+# GitHub schedule too. That schedule is not a safety net in practice: of
+# the first thirteen hourly ticks after it went live, one fired, and it
+# was thirty-four minutes late. Free-tier Actions cron is delayed or
+# dropped under load. Unset these and a lesson a pastor approved may sit
+# unpublished for hours.
 #
 #   npx wrangler secret put PUBLISH_DISPATCH_TOKEN
 #
-# PUBLISH_REPO = "Zuljita/StPaulSundaySchool-pipeline"
+# The token is a fine-grained PAT scoped to the pipeline repository only.
+# GitHub documents the classic `repo` scope for the dispatch endpoint and
+# is quiet about the fine-grained equivalent, so grant Contents: write
+# and confirm from a real approval rather than from this comment: the
+# Worker now logs whether GitHub accepted or refused the dispatch, and
+# `npx wrangler tail` will say which.
+PUBLISH_REPO = "Zuljita/StPaulSundaySchool-pipeline"
+
+# The heartbeat. An approval dispatches for itself; nothing else does,
+# and at 9pm on a Saturday the only thing that has happened is that time
+# passed. The front page has to be re-rendered for the lesson in use to
+# change, so something has to ask for a publish on a schedule.
+#
+# It is here rather than in GitHub Actions because Actions' cron is the
+# part that has already proven unreliable. Cloudflare runs this, GitHub
+# does the work. publish.yml keeps its own schedule as a last resort.
+#
+# Hourly: the turn lands within an hour of 9pm, and the Actions minutes
+# stay where publish.yml's own comment reasoned them to.
+[triggers]
+crons = ["0 * * * *"]

@@ -39,6 +39,7 @@ FIXTURE_STANDARDS = Path(__file__).resolve().parent / "data" / "standards"
 ROOT = Path(__file__).resolve().parents[2]
 RENDER_DIR = ROOT / "tools" / "stpaul" / "render"
 WORKER = ROOT / "services" / "site" / "worker.js"
+APPROVAL_WORKER = ROOT / "services" / "approval" / "worker.js"
 
 from stpaul import approval, hashing
 from stpaul.model import load_lesson
@@ -890,3 +891,115 @@ class PublishGateTestCase(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DispatchTestCase(unittest.TestCase):
+    """The approval Worker's dispatch, run as the real file.
+
+    This is how an approval reaches the congregation and how the week
+    turns over on Saturday night, so the two things that matter are that
+    it never throws, and that it never fails quietly. `fetch` resolves
+    normally on a 403, so a token with the wrong scope once looked
+    exactly like success.
+    """
+
+    def setUp(self):
+        if not APPROVAL_WORKER.is_file():
+            self.skipTest("services/approval/worker.js not in this checkout")
+        if shutil.which("node") is None:
+            self.skipTest("node is not available")
+        self.tmp = Path(tempfile.mkdtemp(prefix="stpaul-dispatch-"))
+
+    def tearDown(self):
+        shutil.rmtree(getattr(self, "tmp", None) or ".", ignore_errors=True)
+
+    def module(self) -> Path:
+        """The real worker, with one line stubbed, as an importable file.
+
+        wrangler bundles the review app as text through a [[rules]]
+        entry. node cannot resolve that import and it has nothing to do
+        with dispatching, so stub exactly that line and leave every other
+        line of the real file alone. If the import ever moves, the count
+        below fails rather than the stub silently doing nothing.
+        """
+        src = APPROVAL_WORKER.read_text(encoding="utf-8")
+        stubbed, n = re.subn(
+            r"""^import\s+(\w+)\s+from\s+["'][^"']+\.html["'];?$""",
+            r'const \1 = "";', src, flags=re.M)
+        self.assertEqual(n, 1,
+                         "the review app import moved; this stub is stale")
+
+        out = self.tmp / "worker.mjs"
+        out.write_text(stubbed + "export { dispatch };\n",
+                       encoding="utf-8")
+        return out
+
+    def run_worker(self) -> dict:
+        script = """
+        const mod = await import(%s);
+
+        const logs = [];
+        const cap = (lvl) => (...a) => logs.push(lvl + ': ' + a.join(' '));
+        console.log = cap('log');
+        console.warn = cap('warn');
+        console.error = cap('error');
+
+        const env = { PUBLISH_REPO: 'o/r', PUBLISH_DISPATCH_TOKEN: 'tok' };
+        const out = {};
+        const call = (e, t, p) => mod.dispatch(e, t, p)
+          .then(() => 'returned', (err) => 'THREW: ' + err.message);
+
+        globalThis.fetch = async () => new Response('nope', { status: 403 });
+        out.refused = await call(env, 'approval-recorded', {});
+
+        globalThis.fetch = async () => new Response(null, { status: 204 });
+        out.accepted = await call(env, 'approval-recorded', {});
+
+        out.unset = await call({}, 'content-changed', {});
+
+        globalThis.fetch = async () => { throw new Error('network down'); };
+        out.threw = await call(env, 'content-changed', {});
+
+        out.hasScheduled = typeof mod.default.scheduled === 'function';
+        out.logs = logs;
+        process.stdout.write(JSON.stringify(out));
+        """ % json.dumps(self.module().as_uri())
+
+        res = subprocess.run(["node", "--input-type=module", "-e", script],
+                             capture_output=True, text=True)
+        if res.returncode != 0:
+            raise AssertionError(
+                "could not evaluate dispatch out of the approval worker. It "
+                "must stay a top-level `function dispatch`.\n" + res.stderr)
+        return json.loads(res.stdout)
+
+    def test_a_dispatch_never_fails_an_approval(self):
+        """The decision is already committed by the time this runs. A
+        notification that fails must never look like an approval that
+        failed."""
+        out = self.run_worker()
+        for case in ("refused", "accepted", "unset", "threw"):
+            self.assertEqual(out[case], "returned",
+                             f"dispatch threw on the {case} path")
+
+    def test_a_refusal_is_reported_rather_than_swallowed(self):
+        """fetch resolves on a 403. Without a status check, a token with
+        the wrong scope is silence, and silence is what a working publish
+        also sounds like."""
+        logs = self.run_worker()["logs"]
+        refused = [l for l in logs if l.startswith("error:") and "403" in l]
+        self.assertTrue(refused, f"no error logged for a 403; got {logs}")
+        self.assertIn("PUBLISH_DISPATCH_TOKEN", refused[0],
+                      "the error does not say what to go and look at")
+
+    def test_an_unconfigured_worker_says_so(self):
+        logs = self.run_worker()["logs"]
+        self.assertTrue([l for l in logs if l.startswith("warn:")
+                         and "PUBLISH_REPO" in l],
+                        f"nothing warned that the dispatch is unset; got {logs}")
+
+    def test_the_worker_has_a_scheduled_handler(self):
+        """Nothing dispatches at 9pm Saturday except a schedule: no
+        approval happens then, and the front page still has to turn."""
+        self.assertTrue(self.run_worker()["hasScheduled"],
+                        "no scheduled() export, so the week never turns")
