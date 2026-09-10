@@ -11,6 +11,15 @@ __pycache__/
 .venv/
 venv/
 node_modules/
+
+# Wrangler's local cache. tools/publish_r2.py runs `npx wrangler` from
+# this checkout, so a publish creates this directory here. Untracked, it
+# makes `git status --porcelain` non-empty, which trips "Leave no
+# curriculum behind" and fails the job after the upload has already
+# succeeded. That guard exists to catch curriculum landing in a public
+# repository; it cannot do that job if it reports a wrangler cache on
+# every single publish.
+.wrangler/
 .DS_Store
 Thumbs.db
 
