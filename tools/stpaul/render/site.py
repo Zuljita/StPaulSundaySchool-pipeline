@@ -637,7 +637,14 @@ def render_sunday(lesson: Lesson, source_hash: str, *, draft: bool = False) -> s
         body += [f'<div class="level"><h3>{_esc(label)}</h3>', '<ul class="pieces">']
         for p in pieces:
             stem = f"{p.order:02d}-{p.id}" + ("-DRAFT" if draft else "")
-            name = p.title or PIECE_LABELS.get(p.type, p.type)
+            # Which piece this is, not what the lesson is called. Every
+            # piece in a Sunday carries the lesson's title, so keying the
+            # link on the title printed one phrase down the whole list and
+            # left a teacher unable to tell their guide from the student
+            # sheet standing next to it. PIECE_LABELS is the wording
+            # handoff.py and appexport.py already use, so all three agree
+            # about what a piece is called.
+            name = PIECE_LABELS.get(p.type) or p.title or p.id
             body += [
                 "<li>",
                 f'<span class="name"><a href="/{_esc(lesson.slug)}/pieces/'
@@ -690,13 +697,6 @@ def render_index(entries: list[dict], *, church: str = "St. Paul Lutheran Church
             body.append("</li>")
         body.append("</ul>")
 
-    body += [
-        "<footer>",
-        "<p>Every lesson here is rendered from the text a pastor approved, "
-        "and carries the hash of that text at the foot of the page. The "
-        "printed handouts are built in the same pass from the same source.</p>",
-        "</footer>",
-    ]
     return _shell("Sunday School", body, draft=False)
 
 
