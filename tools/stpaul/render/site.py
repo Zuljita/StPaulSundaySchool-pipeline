@@ -300,6 +300,27 @@ li { margin-bottom: 0.35rem; }
 .sundays .day:hover { text-decoration: underline; }
 .sundays .theme { font-size: 1.0625rem; margin-top: 0.3rem; }
 
+/* --- install ----------------------------------------------------- */
+/* Hidden until the browser says the site can actually be installed,
+   which is the only moment the offer means anything. With JavaScript
+   off, or on iOS where no such event is ever fired, it never appears. */
+.install {
+  margin: 2rem 0 0;
+  padding: 0.55rem 1.1rem;
+  font-family: var(--font-label);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--paper);
+  background: var(--navy);
+  border: 0;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.install:hover, .install:focus-visible { background: var(--blue); }
+.install[hidden] { display: none; }
+
 /* --- footer ------------------------------------------------------ */
 
 footer {
@@ -462,6 +483,9 @@ def _shell(title: str, body: list[str], *, draft: bool) -> str:
         *banner,
         '<div class="wrap">',
         *body,
+        # Hidden until beforeinstallprompt fires. See REGISTER_SW.
+        '<button class="install" id="install" type="button" hidden>'
+        'Add to home screen</button>',
         "</div>",
         "</body>",
         "</html>",
@@ -796,6 +820,43 @@ if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/sw.js", { scope: "/" });
   });
 }
+
+/* The install offer.
+
+   Chrome stopped showing an add-to-home-screen banner of its own in
+   version 76. It fires beforeinstallprompt and leaves the offer to the
+   site, so a site that ignores the event is installable only through a
+   menu almost nobody opens. That is what the service worker above was
+   traded for, and without this it was bought and never spent.
+
+   The button ships hidden and is revealed only when the browser says
+   the site can be installed, so it never offers something that would
+   do nothing. Safari fires no such event and exposes no install API:
+   on iOS the button stays hidden and Share, then Add to Home Screen,
+   remains the only path. That is Apple's decision, not a gap here. */
+(function () {
+  var deferred = null;
+  var button = document.getElementById("install");
+  if (!button) return;
+
+  window.addEventListener("beforeinstallprompt", function (event) {
+    event.preventDefault();
+    deferred = event;
+    button.hidden = false;
+  });
+
+  button.addEventListener("click", function () {
+    if (!deferred) return;
+    deferred.prompt();
+    deferred = null;
+    button.hidden = true;
+  });
+
+  window.addEventListener("appinstalled", function () {
+    deferred = null;
+    button.hidden = true;
+  });
+})();
 """
 
 
