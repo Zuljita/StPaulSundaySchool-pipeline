@@ -191,21 +191,35 @@ async function ghPut(env, path, text, sha, message) {
 /**
  * Tell the pipeline repository that something is ready to publish.
  *
- * Optional, and deliberately incapable of failing an approval. By the
- * time this runs the decision is already committed to the data
- * repository, which is the part that matters; this only shortens the
- * wait before it reaches the site. The publish workflow also runs on a
- * schedule, so a dispatch that never arrives costs minutes, not a
- * publication.
+ * This is the path, not a shortcut past one. `.github/workflows/
+ * publish.yml` also runs on a GitHub schedule, but that schedule is not
+ * a safety net in practice: of the first thirteen hourly ticks after it
+ * went live, one fired, thirty-four minutes late. Free-tier Actions cron
+ * is delayed or dropped under load and GitHub says so. So an approval
+ * that does not dispatch is an approval that may not reach the site for
+ * hours.
  *
- * Nothing here is allowed to throw. An approval that recorded correctly
- * must not report failure because a notification did not go out.
+ * Nothing here is allowed to throw. By the time this runs the decision
+ * is already committed to the data repository, which is the part that
+ * matters, and an approval that recorded correctly must never report
+ * failure because a notification did not go out.
+ *
+ * But it must say when it fails. The previous version caught exceptions
+ * and never looked at the response status, and `fetch` resolves normally
+ * on a 403: a token with the wrong scope produced a silence identical to
+ * success. That was survivable while this was decorative. It is not
+ * survivable now that a Sunday reaches the congregation through it.
  */
-async function notifyPublisher(env, slug, decision) {
-  if (decision !== "approved") return;
-  if (!env.PUBLISH_REPO || !env.PUBLISH_DISPATCH_TOKEN) return;
+async function dispatch(env, eventType, payload) {
+  if (!env.PUBLISH_REPO || !env.PUBLISH_DISPATCH_TOKEN) {
+    console.warn(
+      `dispatch(${eventType}) skipped: PUBLISH_REPO or ` +
+      `PUBLISH_DISPATCH_TOKEN is not set, so nothing will publish until ` +
+      `the GitHub schedule happens to fire.`);
+    return;
+  }
   try {
-    await fetch(`${GH}/repos/${env.PUBLISH_REPO}/dispatches`, {
+    const res = await fetch(`${GH}/repos/${env.PUBLISH_REPO}/dispatches`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${env.PUBLISH_DISPATCH_TOKEN}`,
@@ -214,15 +228,32 @@ async function notifyPublisher(env, slug, decision) {
         "User-Agent": "stpaul-approval",
       },
       body: JSON.stringify({
-        event_type: "approval-recorded",
+        event_type: eventType,
         // Which Sunday, and nothing else. The workflow reads the
         // curriculum itself; it does not need to be told any of it.
-        client_payload: { sunday: slug },
+        client_payload: payload,
       }),
     });
+    // GitHub answers 204 with no body. Anything else is a refusal that
+    // fetch reports without throwing.
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(
+        `dispatch(${eventType}) refused: HTTP ${res.status}. ` +
+        `Check PUBLISH_DISPATCH_TOKEN's scope on ${env.PUBLISH_REPO}. ` +
+        body.slice(0, 300));
+      return;
+    }
+    console.log(`dispatch(${eventType}) accepted by ${env.PUBLISH_REPO}`);
   } catch (e) {
-    // Swallowed on purpose. See the note above.
+    console.error(
+      `dispatch(${eventType}) threw: ${(e && e.message) || e}`);
   }
+}
+
+async function notifyPublisher(env, slug, decision) {
+  if (decision !== "approved") return;
+  await dispatch(env, "approval-recorded", { sunday: slug });
 }
 
 /**
@@ -498,5 +529,32 @@ export default {
         ? 401 : 500;
       return json({ error: msg }, status, origin);
     }
+  },
+
+  /**
+   * The heartbeat that turns the week over.
+   *
+   * An approval dispatches for itself. Nothing else does: at 9pm on a
+   * Saturday the only thing that has happened is that time passed, and
+   * there is no approval to hang a notification on. The front page has
+   * to be re-rendered for the lesson in use to change, so something must
+   * ask for a publish on a schedule.
+   *
+   * That something is here rather than in GitHub Actions because
+   * Actions' free-tier cron is the component that has already proven
+   * unreliable: it fired once in the first thirteen hourly ticks. This
+   * runs on Cloudflare's scheduler and asks GitHub to do the work, which
+   * puts both triggers on the same dependable path instead of one that
+   * works and one that mostly does not. The workflow keeps its own
+   * schedule as a last resort; it costs nothing on the hours it fails to
+   * fire.
+   *
+   * Hourly, so the turn lands within an hour of 9pm and the Actions
+   * minutes stay exactly where publish.yml's own comment reasoned them
+   * to. `content-changed` is a trigger type that workflow already
+   * accepts.
+   */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(dispatch(env, "content-changed", { cron: event.cron }));
   },
 };
