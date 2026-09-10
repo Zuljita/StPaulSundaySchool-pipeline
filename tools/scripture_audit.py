@@ -10,12 +10,19 @@ allow quotation up to a limit without written permission, and both limits
 are cumulative across a work. A one-year lectionary quietly accumulates
 verses, so this exists to watch the total rather than assume it.
 
-Two tests per publisher, both reported:
+One test per publisher:
 
-  verses      total quoted, against the no-permission ceiling
-  share       how much of a single piece is Scripture. Crossway's
-              threshold is 25%, which a one-page student handout that
-              prints the pericope in full can reach.
+  verses      total quoted, against the no-permission ceiling, and
+              projected across a year
+
+A per-piece share-of-work test lived here too and was removed. It
+measured one piece's Scripture against that same piece, but both
+publishers state their threshold as a share of *the work* the quotation
+appears in, and for a curriculum that is the year rather than a single
+handout. Measured per-piece it flagged the student sheets that print the
+pericope, which is what those sheets are for. Whether a given piece
+leans too hard on the text is a judgment about the curriculum, and the
+church makes it on review.
 
 This is arithmetic, not legal advice. The church should confirm its own
 use with each publisher; a Sunday School curriculum given away is usually
@@ -62,7 +69,6 @@ def main() -> int:
 
     totals: dict[str, int] = {}
     counts: dict[str, int] = {}
-    over_share: list[tuple[str, str, float, float]] = []
 
     print(f"{'Sunday':<26} {'transl':<7} {'reference':<20} {'verses':>7}")
     print("-" * 64)
@@ -75,16 +81,6 @@ def main() -> int:
         totals[tr] = totals.get(tr, 0) + n
         counts[tr] = counts.get(tr, 0) + 1
         print(f"{slug:<26} {tr:<7} {ref or '(none)':<20} {n:>7}")
-
-        limit = (cfgs.get(tr) or {}).get("max_share_of_work")
-        if not limit:
-            continue
-        for p in lesson.pieces:
-            sec = p.section("The Text")
-            if sec and p.body:
-                share = len(sec.body) / len(p.body)
-                if share > limit:
-                    over_share.append((slug, p.id, share, limit))
 
     print()
     print("Against each publisher's no-permission ceiling")
@@ -101,13 +97,6 @@ def main() -> int:
         print(f"  {tr:<12} {total:>4} verses so far, cap {cap}")
         print(f"  {'':<12} ~{per:.0f}/Sunday, projected {proj:.0f} over {args.project} Sundays  [{bar}]")
         print(f"  {'':<12} holder: {cfg.get('holder','')}")
-
-    if over_share:
-        print()
-        print("Pieces where Scripture exceeds the publisher's share-of-work threshold")
-        print("-" * 64)
-        for slug, pid, share, limit in over_share:
-            print(f"  {slug}  {pid:<32} {share:.0%}  (threshold {limit:.0%})")
 
     print()
     print("Arithmetic, not legal advice. Confirm the church's own use with each")
