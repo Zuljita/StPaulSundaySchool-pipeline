@@ -251,15 +251,53 @@ class SiteRenderTestCase(unittest.TestCase):
         self.assertEqual(entry["source_sha256"], self.digest)
         self.assertEqual(entry["pieces_count"], len(self.lesson.pieces))
 
-    def test_the_front_page_orders_sundays_newest_first(self):
-        html = site.render_index([
-            {"slug": "2026-01-04-a", "date": "2026-01-04", "liturgical_day": "Older"},
-            {"slug": "2026-02-15-b", "date": "2026-02-15", "liturgical_day": "Newer"},
-        ])
-        self.assertLess(html.index("Newer"), html.index("Older"))
+    # -- what the front page puts first --------------------------------
+
+    ENTRIES = [
+        {"slug": "2026-09-13-a", "date": "2026-09-13", "liturgical_day": "Taught"},
+        {"slug": "2026-09-20-b", "date": "2026-09-20", "liturgical_day": "InUse"},
+        {"slug": "2026-09-27-c", "date": "2026-09-27", "liturgical_day": "Coming"},
+    ]
+
+    def order(self, as_of):
+        html = site.render_index(self.ENTRIES, as_of=as_of)
+        return re.findall(r'class="day"[^>]*>([^<]+)<', html)
+
+    def test_the_lesson_in_use_comes_first_not_the_newest_one(self):
+        """Sorting by date alone put a Sunday nobody has taught yet above
+        the one being taught now. What a reader wants first is the lesson
+        in use; what is coming follows it, and what is finished falls
+        below both.
+        """
+        self.assertEqual(self.order(_dt.date(2026, 9, 23)),
+                         ["InUse", "Coming", "Taught"])
+
+    def test_a_sunday_stays_first_for_the_whole_week_after_it_is_taught(self):
+        """The family take-home is worked through at home all week.
+        Demoting it on Monday buries a sheet a family is still using.
+        """
+        for day in range(20, 27):            # the Sunday through Saturday
+            as_of = _dt.date(2026, 9, day)
+            self.assertEqual(self.order(as_of)[0], "InUse",
+                             f"as_of {as_of} did not keep the lesson in use "
+                             f"at the top")
+
+    def test_an_undated_sunday_goes_last_rather_than_being_guessed_at(self):
+        entries = self.ENTRIES + [{"slug": "no-date", "liturgical_day": "Undated"}]
+        html = site.render_index(entries, as_of=_dt.date(2026, 9, 23))
+        order = re.findall(r'class="day"[^>]*>([^<]+)<', html)
+        self.assertEqual(order[-1], "Undated")
+
+    def test_the_front_page_is_byte_identical_for_the_same_day(self):
+        """render/ may not read a clock, so the date is an argument and
+        two renders of one day must not differ."""
+        as_of = _dt.date(2026, 9, 23)
+        self.assertEqual(site.render_index(self.ENTRIES, as_of=as_of),
+                         site.render_index(self.ENTRIES, as_of=as_of))
 
     def test_an_empty_front_page_says_so_rather_than_breaking(self):
-        self.assertIn("No lessons", site.render_index([]))
+        self.assertIn("No lessons",
+                      site.render_index([], as_of=_dt.date(2026, 9, 23)))
 
     def test_no_artwork_credit_is_invented(self):
         """A missing credit gets no line, not one this renderer wrote."""
@@ -671,6 +709,47 @@ class PublishGateTestCase(unittest.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
+
+    # -- when the week turns -------------------------------------------
+
+    def test_the_week_turns_at_nine_on_saturday_night(self):
+        """Not at midnight, and not on Sunday morning.
+
+        A family take-home is used at home all week, so the Sunday it
+        belongs to stays current until the evening before the next one.
+        Nine is when the church asked for it; the rule is tested at the
+        minute either side rather than somewhere safely in the middle.
+
+        week_date takes a time already in the church's timezone, so this
+        runs on a machine with no IANA database. Only as_of_date needs
+        one, and that is the runner.
+        """
+        turn = _dt.datetime(2026, 9, 26, 21, 0)      # a Saturday
+        before = turn - _dt.timedelta(minutes=1)
+
+        self.assertEqual(self.publish_site.week_date(before),
+                         _dt.date(2026, 9, 26),
+                         "the week turned early")
+        self.assertEqual(self.publish_site.week_date(turn),
+                         _dt.date(2026, 9, 27),
+                         "the week did not turn at nine")
+
+    def test_sunday_night_does_not_start_the_next_week(self):
+        """The three-hour shift advances the date after 9pm on any day,
+        which is harmless everywhere except Saturday. The risk is that it
+        rolls a late Sunday into the following week and demotes the
+        lesson taught that morning, so assert the Sunday itself.
+        """
+        late = _dt.datetime(2026, 9, 27, 23, 0)          # the Sunday, late
+        html = site.render_index(
+            [{"slug": "2026-09-27-c", "date": "2026-09-27",
+              "liturgical_day": "ThisWeek"},
+             {"slug": "2026-10-04-d", "date": "2026-10-04",
+              "liturgical_day": "NextWeek"}],
+            as_of=self.publish_site.week_date(late))
+        order = re.findall(r'class="day"[^>]*>([^<]+)<', html)
+        self.assertEqual(order[0], "ThisWeek",
+                         "a late Sunday started the next week early")
 
     def build(self, *, approved=True, draft=False, source=None):
         out = self.dist / SLUG

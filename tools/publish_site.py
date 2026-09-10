@@ -37,7 +37,9 @@ import hashlib
 import json
 import shutil
 import sys
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 if hasattr(sys.stdout, "reconfigure"):
@@ -148,6 +150,50 @@ def _manifest_rows(out: Path) -> list[dict]:
     return rows
 
 
+CHURCH_TZ = "America/Chicago"
+
+# The week turns at 9pm Saturday, not at midnight.
+#
+# A family take-home is used at home all week, so the Sunday it belongs
+# to stays the lesson in use until the evening before the next one, when
+# a teacher is preparing and a family is looking for what comes next.
+#
+# Shifting the clock forward three hours puts that boundary back onto a
+# date line: 21:00 Saturday becomes 00:00 Sunday. "Which Sunday is
+# current" stays a question about dates, and the renderer never has to
+# know the hour. The shift cannot cross a US daylight-saving change,
+# which happens at 2am.
+WEEK_TURNS_AT = timedelta(hours=3)
+
+
+def week_date(local_now: datetime) -> date:
+    """The date the front page should treat as today.
+
+    `local_now` must already be in the church's timezone. Kept separate
+    from resolving that timezone so the rule itself can be tested on a
+    machine with no IANA database, which is every Windows box without
+    `tzdata`.
+    """
+    return (local_now + WEEK_TURNS_AT).date()
+
+
+def as_of_date(now: datetime | None = None) -> date:
+    """`week_date` in the church's timezone."""
+    try:
+        tz = ZoneInfo(CHURCH_TZ)
+    except ZoneInfoNotFoundError as exc:
+        # Deliberately fatal. Falling back to UTC would put the week's
+        # turn at 00:00 UTC Saturday, which is 7pm Friday in Austin: the
+        # lesson a family is still working through would drop off the top
+        # of the page two days early, and nothing would report an error.
+        raise RuntimeError(
+            f"No IANA time zone database, so {CHURCH_TZ} cannot be "
+            f"resolved and the week's turn cannot be placed at 9pm "
+            f"Central. Install it with:  pip install tzdata"
+        ) from exc
+    return week_date((now or datetime.now(tz)).astimezone(tz))
+
+
 def _cache_version(rows: list[dict]) -> str:
     """A cache name derived from the bytes being published.
 
@@ -211,7 +257,8 @@ def stage(cands: list[dict], out: Path) -> list[dict]:
                 shutil.copy2(f, assets / f.name)
 
     (out / "index.html").write_text(
-        render_index([c["entry"] for c in cands]), encoding="utf-8")
+        render_index([c["entry"] for c in cands], as_of=as_of_date()),
+        encoding="utf-8")
 
     for c in cands:
         slug = c["slug"]
