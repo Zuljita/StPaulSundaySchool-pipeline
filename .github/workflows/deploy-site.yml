@@ -3,7 +3,7 @@ name: deploy site worker
 # Ships services/site to Cloudflare. This deploys the Worker and nothing
 # else: no page, no lesson, no handout. Everything the site serves lives
 # in R2 and is put there by `tools/publish_site.py` plus
-# `services/site/publish.ps1`, run by whoever holds the private data
+# `tools/publish_r2.py`, run by whoever holds the private data
 # repository.
 #
 # That split is deliberate and it is the reason this workflow can exist in

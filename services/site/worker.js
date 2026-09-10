@@ -10,7 +10,7 @@
  *
  *   tools/build.py         refuses to render a Sunday that is not approved
  *   tools/publish_site.py  re-checks the hash and the approval, then stages
- *   services/site/publish.ps1   uploads what was staged
+ *   tools/publish_r2.py    uploads what was staged
  *
  * So this file can be deployed at any time without touching a word of
  * doctrine, and a Sunday can be published without deploying. Those two
@@ -38,7 +38,7 @@
  * completely with JavaScript switched off.
  *
  * BINDINGS (wrangler.toml)
- *   SITE                   the R2 bucket publish.ps1 uploads to
+ *   SITE                   the R2 bucket publish_r2.py uploads to
  */
 
 // The site is served from R2 under keys that are exactly its URL paths.
