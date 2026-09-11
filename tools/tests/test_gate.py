@@ -301,6 +301,22 @@ class RuleTestCase(unittest.TestCase):
         body = PIECE.replace("## Pray This Together\n\nA prayer.\n\n", "")
         self.assertIn("missing-section", self.rules_hit(body))
 
+    def test_an_empty_required_section_is_an_error(self):
+        """A heading with nothing under it is not a satisfied requirement.
+
+        This is how a draft holds a place for text it does not own yet,
+        Scripture not yet fetched from the publisher among them, so the
+        empty section has to be what stops the build rather than a
+        bracketed note that reads as finished text to a reader.
+        """
+        body = PIECE.replace("## Pray This Together\n\nA prayer.", "## Pray This Together\n")
+        hit = self.rules_hit(body)
+        self.assertIn("empty-section", hit)
+        self.assertNotIn("missing-section", hit)
+
+    def test_a_filled_section_is_not_reported_empty(self):
+        self.assertNotIn("empty-section", self.rules_hit(PIECE))
+
     def test_wrong_catechism_heading_is_caught(self):
         self.assertIn("wrong-catechism-heading", self.rules_hit(
             PIECE.replace("## From the Small Catechism", "## Catechism Connection")))

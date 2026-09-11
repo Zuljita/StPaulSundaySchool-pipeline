@@ -137,15 +137,34 @@ def check_required_sections(rules: dict, lesson: Lesson) -> list[Finding]:
         if not required:
             continue
         for name in required:
-            if piece.has_section(name):
-                continue
             if _exempt(rules, piece.level, piece.type, name):
                 continue
-            out.append(Finding(
-                severity=severity, rule="missing-section",
-                message=f'{piece.type.replace("_", " ")} is missing the required section "{name}".',
-                source=source, piece=piece.path.name,
-            ))
+            section = piece.section(name)
+            if section is None:
+                out.append(Finding(
+                    severity=severity, rule="missing-section",
+                    message=f'{piece.type.replace("_", " ")} is missing the required section "{name}".',
+                    source=source, piece=piece.path.name,
+                ))
+                continue
+            # A heading with nothing under it satisfies the letter of the
+            # rule and none of its point. This is the shape a draft takes
+            # when text is still owed: Scripture that has not been fetched
+            # from the publisher, a hymn stanza not yet licensed-checked,
+            # a catechism text nobody has copied out. Leaving the section
+            # empty is the honest way to hold that place, and this is what
+            # stops it reaching a volunteer's hand. A bracketed placeholder
+            # would read as finished text to the renderer and to a reader,
+            # which is how "[Insert the week's assigned stanza]" got into
+            # a printed piece.
+            if not section.body.strip():
+                out.append(Finding(
+                    severity=severity, rule="empty-section",
+                    message=f'{piece.type.replace("_", " ")} has the required section '
+                            f'"{name}" but nothing under it. Fill it or remove the piece '
+                            f'from this Sunday; a heading alone does not build.',
+                    source=source, piece=piece.path.name,
+                ))
     return out
 
 
