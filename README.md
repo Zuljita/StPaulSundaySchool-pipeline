@@ -134,7 +134,7 @@ touch real content.
 | `tools/stpaul/` | model, rule engine, canonical hashing, approval gate |
 | `tools/stpaul/render/` | brand constants, block parser, handoff, DOCX, PDF, site, package, app export |
 | `tools/*.py` | the CLI: lint, verify, approve, build, importers, audits |
-| `tools/tests/` | 100 tests, with fixture data |
+| `tools/tests/` | tests, with fixture data |
 | `review/` | the review app, bundled into the Worker at deploy |
 | `services/approval/` | Cloudflare Worker: serves the app, Google sign-in, commit |
 | `services/site/` | Cloudflare Worker: serves the public site out of R2 |
@@ -156,6 +156,7 @@ touch real content.
 | `drift.py` | App vs handouts, piece by piece. |
 | `scripture_audit.py` | Verse counts against publisher permission limits. |
 | `fetch_app.py` | Snapshot what the live app is serving. |
+| `fetch_scripture.py` | Pull a Sunday's pericope from Crossway's ESV API into `lesson.yml`. Needs `ESV_API_KEY`. |
 
 ---
 
