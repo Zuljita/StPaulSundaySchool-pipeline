@@ -45,6 +45,7 @@ circulation at once, and nothing could tell you which was current.
 ```
 content/<sunday>/          source of truth, in the data repo
      |
+     |  fetch-scripture        Scripture from the publisher, on a runner
      |  tools/lint.py          rules as data, not as prose
      |  review/ + services/    a pastor reads and approves
      |  SHA-256 content hash   bound to the exact bytes reviewed
@@ -64,7 +65,11 @@ r2://stpaul-sundayschool     the public site, served by services/site
 
 All of it runs unattended. `.github/workflows/publish.yml` refreshes what
 a reviewer can see, builds what a pastor has approved, and publishes it,
-on a schedule and again within a minute of an approval being recorded.
+on a schedule and again within a minute of an approval being recorded. In
+the data repository, `fetch-scripture.yml` fills each Sunday's Scripture
+from Crossway's ESV API whenever a `lesson.yml` is pushed. Nothing in the
+chain waits for a person to run a command, and the tools that do these
+jobs refuse to run anywhere but a runner.
 
 **The gate.** An approval is a statement about *specific bytes*, recorded
 against a verified Google identity from the roster. Change one comma and
@@ -99,9 +104,16 @@ subset of the standards, each rule citing the document and section it
 comes from. Contradictions *between* standards documents are recorded,
 not resolved, because picking a side is a doctrinal decision.
 
+**Scripture is never typed.** `lesson.yml` holds the publisher's text for
+every passage a Sunday declares, fetched on a runner, and the
+`scripture_quotations` rule holds every quotation in every piece to it,
+word for word.
+
 ---
 
 ## Quick start
+
+For working on the pipeline itself. Running it is the workflows' job.
 
 ```powershell
 pip install pyyaml python-docx reportlab pypdf
@@ -110,20 +122,22 @@ $env:STPAUL_DATA = "D:\dev\StPaulSundaySchool"    # PowerShell
 ```
 
 ```bash
-python -m unittest discover -s tools/tests   # 100 tests, no data repo needed
+python -m unittest discover -s tools/tests   # no data repo needed
 python tools/lint.py                         # rules vs content
 python tools/lint.py --baseline              # only NEW violations (what CI runs)
 python tools/verify.py                       # still what was approved?
-python tools/build.py <sunday>               # refuses unless approved
 python tools/build.py <sunday> --draft       # watermarked proof
-python tools/build.py --all --approved-only  # everything a pastor has signed
-python tools/publish_site.py                 # stage the public site for R2
-python tools/publish_r2.py --staged <dir>    # upload it
 ```
 
 The data repository is found via `$STPAUL_DATA`, else a sibling checkout,
 else the current repo. Tests always use `tools/tests/data/` and never
 touch real content.
+
+Fetching Scripture, refreshing review data, building what is approved and
+publishing all run on GitHub Actions. `fetch_scripture.py`,
+`make_review.py`, `publish_site.py`, `publish_r2.py` and `approve.py`
+refuse to run anywhere else. `--local` gets past that, and it exists for
+working on those tools, not for doing their jobs by hand.
 
 ---
 
@@ -144,19 +158,19 @@ touch real content.
 | `lint.py` | Content vs `rules.yml`. `--baseline` fails only on new violations. |
 | `verify.py` | Does content still match its approval? |
 | `history.py` | Who approved what, when, and whether it still applies. |
-| `approve.py` | Record a review locally. Unsigned; for development. |
+| `approve.py` | Record a review from the command line, for development only. Approvals come from the review app. |
 | `build.py` | Render handoff, DOCX, PDF, web site, ZIP and app export. Refuses unapproved. |
-| `publish_site.py` | Stage the site for R2. Re-checks hash and approval; skips drafts. |
-| `publish_r2.py` | Upload a staged site. One uploader, Windows and CI alike. |
+| `publish_site.py` | Stage the site for R2. Re-checks hash and approval; skips drafts. Run by `publish.yml`. |
+| `publish_r2.py` | Upload a staged site. Run by `publish.yml`. |
 | `make_icons.py` | Cut the app icons out of the church logo. |
-| `make_review.py` | Build the data the review app and the service read. |
+| `make_review.py` | Build the data the review app and the service read. Run by CI in both repositories. |
 | `import_legacy.py` | Lift produced DOCX into content. Copies, never rewrites. |
 | `import_app.py` | Recover content from a Base44 app export. |
 | `ocr_archive.py` | Recover text from PDFs whose type was flattened to outlines. |
 | `drift.py` | App vs handouts, piece by piece. |
 | `scripture_audit.py` | Verse counts against publisher permission limits. |
 | `fetch_app.py` | Snapshot what the live app is serving. |
-| `fetch_scripture.py` | Pull a Sunday's pericope from Crossway's ESV API into `lesson.yml`. Needs `ESV_API_KEY`. |
+| `fetch_scripture.py` | Fill `lesson.yml` with Scripture from Crossway's ESV API. Run by the data repository's `fetch-scripture` workflow. |
 
 ---
 
@@ -169,15 +183,15 @@ phone's home screen and reads offline.
 ```powershell
 npx wrangler r2 bucket create stpaul-sundayschool
 python tools\build.py --all --approved-only
-python tools\publish_site.py
-python tools\publish_r2.py --staged "D:\dev\StPaulSundaySchool\dist-site"
+python tools\publish_site.py --local
+python tools\publish_r2.py --local --staged "D:\dev\StPaulSundaySchool\dist-site"
 ```
 
-Normally nobody runs that: `.github/workflows/publish.yml` does it on a
-schedule and again within a minute of an approval. The Worker and the
-content deploy separately and on purpose: deploying needs no curriculum,
-and publishing a Sunday needs no Worker deploy. Full walkthrough in
-`services/site/README.md`.
+That is for standing the site up the first time. After that nobody runs
+it: `.github/workflows/publish.yml` does it on a schedule and again within
+a minute of an approval. The Worker and the content deploy separately and
+on purpose: deploying needs no curriculum, and publishing a Sunday needs
+no Worker deploy. Full walkthrough in `services/site/README.md`.
 
 Nothing unapproved can reach it. `build.py` will not render a Sunday
 that is not approved, and `publish_site.py` re-checks the hash and the

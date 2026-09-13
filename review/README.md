@@ -264,20 +264,25 @@ deployed app gets a generated one; with `service` empty the page reads
 reading a proof:
 
 ```powershell
-python tools\make_review.py
+python tools\make_review.py --local
 python -m http.server 8787 --directory review
 ```
 
 Approvals then go through the CLI:
 
 ```powershell
-python tools\approve.py 2026-09-27-trinity-17 `
+python tools\approve.py 2026-09-27-trinity-17 --local `
     --reviewer "Bryan Wolfmueller" --role pastor --note "reviewed 9/25"
 ```
 
 These record `method: local-cli`, which `tools/history.py` marks as
 recorded from the command line. They prove only that someone could run
 the command, so they are for local testing rather than for the gate.
+
+Both tools refuse without `--local`. On the real curriculum the data
+repository's workflows regenerate the review data and the review app
+records approvals, so running either by hand there is never the way to
+get something done.
 
 ---
 
