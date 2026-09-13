@@ -41,6 +41,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
+from stpaul import runner
 from stpaul.model import DATA_ROOT
 
 DEFAULT_STAGED = DATA_ROOT / "dist-site"
@@ -95,7 +96,16 @@ def main() -> int:
     ap.add_argument("--bucket", default=DEFAULT_BUCKET)
     ap.add_argument("--dry-run", action="store_true",
                     help="list what would be uploaded and stop")
+    runner.add_local_flag(ap)
     args = ap.parse_args()
+
+    refused = runner.refusal(
+        "publish_r2.py",
+        "This repository's publish workflow uploads the site on a schedule and within "
+        "a minute of an approval.", args.local)
+    if refused:
+        print(refused, file=sys.stderr)
+        return 2
 
     staged = Path(args.staged)
     objects = load_manifest(staged)

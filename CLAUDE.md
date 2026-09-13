@@ -33,6 +33,47 @@ including Jesus."
 Every one of those rules was written down. Being written down was not
 enough.
 
+## Where things run
+
+**On GitHub Actions.** Every step that changes something is a workflow,
+and it runs because something happened: a push, an approval, a schedule.
+None of them waits for a person to remember it.
+
+| What | Where | When |
+|---|---|---|
+| Fetch Scripture into `lesson.yml` | data repo, `fetch-scripture.yml` | a push that changes a `lesson.yml` |
+| Lint and verify | data repo, `ci.yml` | every pull request, and every push to `main` |
+| Refresh `review/data` | data repo, `refresh-review-data.yml` | a push to `main` that changes content |
+| Build what is approved | data repo, `build-approved.yml` | a new approval |
+| Build and publish the site | here, `publish.yml` | an approval, and hourly |
+| Deploy the Workers | here, `deploy.yml` and `deploy-site.yml` | a push to `main` that touches them |
+
+So:
+
+- **Do not hand anyone a command in place of a workflow.** Not the
+  maintainer, and never the pastor or a reviewer. If a step cannot run on
+  a runner yet, making it run there is the work.
+- **Do not ask anyone to set up a machine or an environment.** No API keys
+  in environment variables, no network allowlists, no local installs. A
+  key the pipeline needs is a GitHub Actions secret, and asking for one is
+  one sentence to the maintainer in the pull request: which secret, in
+  which repository.
+- **Never ask the pastor for anything technical.** Pastor Wolfmueller reads
+  and approves words. A blocked fetch, a missing secret or a failed
+  workflow goes to the maintainer, in the pull request. It does not go to
+  the pastor, and it does not go in an email for the pastor to pass on.
+- **Tools that belong to a workflow refuse to run anywhere else.**
+  `fetch_scripture.py`, `make_review.py`, `publish_site.py`, `publish_r2.py`
+  and `approve.py` stop and say what does their job. `--local` exists so
+  the maintainer can work on those tools. Do not pass it to get something
+  done, and do not tell anyone else to.
+
+This section is a postmortem too. A drafting session could not reach the
+ESV API, and it wrote an email for the pastor asking for a network policy
+change on a Claude Code environment, a registered API key and an
+environment variable. None of that was the pastor's to do, and none of it
+was needed: on a runner the network is open and the key is a secret.
+
 ## What you may and may not do
 
 **Yes:**
@@ -50,6 +91,7 @@ enough.
 - Do not commit Bible or hymn text here. Neither the NKJV (© 1982 Thomas
   Nelson) nor the ESV (© 2001 Crossway) is public domain, and this
   repository is meant to be publishable precisely because it holds none.
+  Tests use invented placeholder text, never a real verse.
 - Do not change what a decision is called in one place only.
   `tools/stpaul/approval.py` defines the words, `services/approval/worker.js`
   records them and `review/index.html` sends them. When they drifted, the
@@ -71,6 +113,9 @@ Picking a side is a doctrinal decision and it belongs to the pastor.
 
 ## Commands
 
+These are for working **on** the pipeline. Running it is the workflows'
+job; see above.
+
 This project is developed on Windows. Prefer PowerShell forms in anything
 you hand a person to run: `$env:STPAUL_DATA = "D:\path"` rather than
 `export`, backslash paths rather than `/d/dev/...`, and a backtick rather
@@ -80,10 +125,7 @@ to `D:\d\dev\x` and fails confusingly.
 ```powershell
 $env:STPAUL_DATA = "D:\dev\StPaulSundaySchool"
 python -m unittest discover -s tools\tests   # no data repo needed
-python tools\lint.py --baseline
-python tools\verify.py
-python tools\build.py <sunday>
-python tools\build.py --all --approved-only  # everything a pastor has signed
-python tools\publish_site.py                 # stage the public site for R2
-python tools\publish_r2.py --staged <dir>    # upload it
+python tools\lint.py --baseline              # reads only
+python tools\verify.py                       # reads only
+python tools\build.py <sunday> --draft       # a watermarked proof, never published
 ```

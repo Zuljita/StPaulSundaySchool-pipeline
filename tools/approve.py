@@ -29,6 +29,7 @@ if hasattr(sys.stdout, "reconfigure"):      # Windows consoles default to cp1252
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 
+from stpaul import runner
 from stpaul.approval import APPROVED, CHANGES_REQUESTED, Review, record_review, reviewer_roster
 from stpaul.hashing import content_hash
 from stpaul.model import CONTENT_DIR, load_lesson, load_rules
@@ -47,7 +48,16 @@ def main() -> int:
                     help="record a rejection rather than an approval")
     ap.add_argument("--force", action="store_true",
                     help="record even though the linter reports errors")
+    runner.add_local_flag(ap)
     args = ap.parse_args()
+
+    refused = runner.refusal(
+        "approve.py",
+        "Approvals are recorded by the review app, which checks who is signing "
+        "against the roster.", args.local)
+    if refused:
+        print(refused, file=sys.stderr)
+        return 2
 
     slug = args.sunday
     sunday_dir = CONTENT_DIR / slug

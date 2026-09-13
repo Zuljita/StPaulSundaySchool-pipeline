@@ -31,17 +31,19 @@ almost nothing, and it is the bridge while the app is still running.
 
 ## How a Sunday reaches the internet
 
-Normally nobody does this by hand. `.github/workflows/publish.yml` runs
-the whole chain on a schedule, and again within about a minute of an
-approval being recorded. By hand it is:
+Nobody does this by hand. `.github/workflows/publish.yml` runs the whole
+chain on a schedule, and again within about a minute of an approval being
+recorded. These are the steps it runs, for anyone working on one of them;
+the three that change something refuse to run off a runner without
+`--local`.
 
 ```powershell
 $env:STPAUL_DATA = "D:\dev\StPaulSundaySchool"
 
-python tools\make_review.py                   # new content becomes reviewable
+python tools\make_review.py --local           # new content becomes reviewable
 python tools\build.py --all --approved-only   # builds what is approved
-python tools\publish_site.py                  # re-checks, then stages
-python tools\publish_r2.py --staged "D:\dev\StPaulSundaySchool\dist-site"
+python tools\publish_site.py --local          # re-checks, then stages
+python tools\publish_r2.py --local --staged "D:\dev\StPaulSundaySchool\dist-site"
 ```
 
 `publish_site.py` skips a Sunday, by name and with the reason, when it is
@@ -103,7 +105,7 @@ on Linux alike.
 | | |
 |---|---|
 | **The Worker** | `.github/workflows/deploy-site.yml`, on a push to `main`. Needs no curriculum. |
-| **The content** | `.github/workflows/publish.yml`, or `publish_r2.py` by hand. Needs no Worker deploy. |
+| **The content** | `.github/workflows/publish.yml`. Needs no Worker deploy. |
 
 That split is why this Worker reads from R2 instead of bundling static
 assets. Bundled pages would have to be uploaded at deploy time, which
