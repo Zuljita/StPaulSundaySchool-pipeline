@@ -17,7 +17,9 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-from .model import Lesson, Piece
+from .model import FRONT_MATTER, Lesson, Piece, _normalize_heading
+from .scripture import (Ref, agreement, covering, find_references, first_words, is_excerpt,
+                        lesson_passages, overlap, parse_reference, words)
 
 ERROR = "error"
 WARNING = "warning"
@@ -538,6 +540,221 @@ def check_open_conflicts(rules: dict, lesson: Lesson) -> list[Finding]:
     return out
 
 
+# ---------------------------------------------------------------------
+# Scripture, in the publisher's words
+# ---------------------------------------------------------------------
+
+_QUOTATION = re.compile(r"[\"“]([^\"“”]+)[\"”]")
+_PARENTHETICAL = re.compile(r"\(([^()]*)\)")
+_CITATION_AFTER = re.compile(r"\s*[.,;:]?\s*\(([^()]*)\)")
+_MARKUP = re.compile(r"\*\*|__|[*_`]")
+_LIST_MARK = re.compile(r"^(?:[-*+]\s+|\d+[.)]\s+|>\s*)")
+
+
+def _paragraphs(piece: Piece):
+    """(heading, line number, text) for every paragraph under a `##` heading.
+
+    Line numbers count from the top of the file, front matter included, so
+    they match the file as opened in an editor.
+    """
+    m = FRONT_MATTER.match(piece.raw)
+    skip = piece.raw[:m.end()].count("\n") if m else 0
+    heading, start, buf = None, 0, []
+    for n, line in enumerate(piece.raw.splitlines()[skip:], start=skip + 1):
+        stripped = line.strip()
+        if line.startswith("## "):
+            if heading is not None and buf:
+                yield heading, start, " ".join(buf)
+            heading, buf = line[3:].strip(), []
+        elif heading is None:
+            continue
+        elif not stripped or stripped.startswith("#"):
+            if buf:
+                yield heading, start, " ".join(buf)
+            buf = []
+        else:
+            if not buf:
+                start = n
+            buf.append(_LIST_MARK.sub("", stripped))
+    if heading is not None and buf:
+        yield heading, start, " ".join(buf)
+
+
+def _citation(inner: str, translation: str) -> tuple[bool, Ref | None]:
+    """Is a parenthetical a citation, like "(Luke 7:14 ESV)" or "(ESV)"?"""
+    rest, ref = inner, None
+    found = find_references(inner)
+    if found:
+        ref, start, end = found[0]
+        rest = inner[:start] + inner[end:]
+    rest = re.sub(rf"\b{re.escape(translation)}\b", " ", rest, flags=re.I)
+    return not words(rest), ref
+
+
+def _bare_citation(text: str, translation: str) -> Ref | None:
+    """The reference, when a whole paragraph is only a citation: "Luke 7:14 (ESV)"."""
+    found = find_references(text)
+    if len(found) != 1:
+        return None
+    ref, start, end = found[0]
+    rest = re.sub(rf"\b{re.escape(translation)}\b", " ", text[:start] + text[end:], flags=re.I)
+    return None if words(rest) else ref
+
+
+def _uncited(text: str, translation: str) -> str:
+    """A paragraph without its citations and translation marks."""
+    return _PARENTHETICAL.sub(
+        lambda m: " " if _citation(m.group(1), translation)[0] else m.group(0), text)
+
+
+def check_scripture_quotations(rules: dict, lesson: Lesson) -> list[Finding]:
+    """Scripture in a piece is the publisher's words, word for word.
+
+    lesson.yml holds each passage a Sunday quotes, fetched from the
+    publisher by tools/fetch_scripture.py on a runner. This holds every piece
+    to that text. It is the check Trinity 17 needed: an imported draft
+    carried two wordings of one phrase in Luke 14:10, neither of them the
+    ESV's, and nothing compared either one with anything.
+
+    Words are compared, not typography. Case, punctuation, emphasis, verse
+    numbers and line breaks are free, and a quotation may be trimmed to a
+    phrase or elided with an ellipsis. An added, dropped, changed or
+    reordered word is not free.
+
+    Three places are read, as rules.yml names them:
+
+      whole_sections   the passage is printed here. A paragraph that is
+                       recognisably the Sunday's Gospel, or the passage
+                       the heading names, has to be it word for word
+      quoted_sections  every quotation in double quotes is Scripture
+      anywhere else    a quotation followed by a citation, "..." (Luke 14:11)
+
+    Recognisably means near_miss: at least that share of a paragraph's
+    words, or of an uncited quotation's, sit in runs it shares, in order,
+    with a fetched passage. One changed word leaves nearly all of a
+    paragraph in such runs, and an activity a student handout sets under
+    "The Text" leaves almost none, so the one is judged and the other is
+    not. A cited quotation is always judged.
+
+    Punctuation is deliberately left out of the comparison. The ESV uses em
+    dashes and the Voice Guide forbids them, and which of the two gives way
+    inside a quotation is not this rule's decision to make.
+    """
+    spec = rules.get("scripture_quotations") or {}
+    translation = (lesson.translation or "").upper()
+    if not spec or translation not in {str(t).upper() for t in spec.get("translations") or []}:
+        return []
+
+    severity = spec.get("severity", ERROR)
+    source = spec.get("source", "")
+    min_words = int(spec.get("min_words", 4))
+    near_miss = float(spec.get("near_miss", 0.6))
+    whole = [_normalize_heading(h) for h in spec.get("whole_sections") or []]
+    quoted = [_normalize_heading(h) for h in spec.get("quoted_sections") or []]
+    passages = lesson_passages(lesson.meta)
+    fetched = [p for p in passages if p.text]
+    gospel = next((p for p in passages if p.field == "gospel_text"), None)
+
+    def under(heading: str, names: list[str]) -> bool:
+        h = _normalize_heading(heading)
+        return any(h == n or h.startswith(n + " ") for n in names)
+
+    def verdict(text: str, heading: str, *, cited: Ref | None = None,
+                pericope: bool = False, near: bool = False) -> tuple[str, str] | None:
+        where = f'under "{heading}"'
+        if pericope:
+            if gospel is None:
+                return ("scripture-unverified",
+                        f"Everything {where} is read as the Sunday's Gospel, but lesson.yml "
+                        f"declares no gospel reference to check it against.")
+            if not gospel.text:
+                return ("scripture-unverified",
+                        f"Everything {where} is read as {gospel.reference}, but lesson.yml "
+                        f"has no fetched gospel_text yet. The fetch-scripture workflow fills "
+                        f"it when lesson.yml is pushed. Leave this section empty until then "
+                        f"rather than typing the passage.")
+            candidates = [gospel]
+        elif cited is not None:
+            declared = covering(passages, cited)
+            if not declared:
+                return ("scripture-unverified",
+                        f"Quotes {cited} {where}, but lesson.yml declares no passage that "
+                        f"covers it, so nothing can check it. Declare it under "
+                        f"cross_references with text: null, and the fetch-scripture "
+                        f"workflow fills it from the publisher.")
+            candidates = [p for p in declared if p.text]
+            if not candidates:
+                return ("scripture-unverified",
+                        f"Quotes {cited} {where}, but lesson.yml has no fetched text for it "
+                        f"yet. The fetch-scripture workflow fills it when lesson.yml is "
+                        f"pushed. Leave the quotation out until then rather than typing it.")
+        else:
+            candidates = fetched
+            if not candidates:
+                return None
+        if any(is_excerpt(text, p.text) for p in candidates):
+            return None
+        best = max(candidates, key=lambda p: overlap(text, p.text))
+        if near and overlap(text, best.text) < near_miss:
+            return None
+        said, n = words(text), agreement(text, best.text)
+        detail = (f'It follows that text for {n} word(s), then has "{said[n]}".'
+                  if n < len(said) else "Its words are all there, but not in that order.")
+        return ("scripture-mismatch",
+                f"This is not the {translation} text of {best.reference} that lesson.yml "
+                f"holds. {detail} Copy Scripture from lesson.yml rather than typing it: a "
+                f"verse may be trimmed to a phrase, but no word may change.")
+
+    out: list[Finding] = []
+    for piece in lesson.pieces:
+        paragraphs = list(_paragraphs(piece))
+        unverifiable: set[str] = set()
+        for i, (heading, line, raw) in enumerate(paragraphs):
+            text = _MARKUP.sub("", raw)
+            judged: list[tuple[str, tuple[str, str] | None]] = []
+            if under(heading, whole):
+                if _bare_citation(text, translation) is None:
+                    body = _uncited(text, translation)
+                    if len(words(body)) >= min_words:
+                        own = parse_reference(heading)
+                        found = (verdict(body, heading, cited=own, near=True) if own
+                                 else verdict(body, heading, pericope=True, near=True))
+                        # Nothing to check against is one problem per section,
+                        # however many paragraphs sit under the heading.
+                        if found and found[0] == "scripture-unverified":
+                            if heading in unverifiable:
+                                found = None
+                            unverifiable.add(heading)
+                        judged.append((body, found))
+            else:
+                scripture = under(heading, quoted)
+                for m in _QUOTATION.finditer(text):
+                    quote = m.group(1)
+                    if len(words(quote)) < min_words:
+                        continue
+                    cited, marked = None, False
+                    after = _CITATION_AFTER.match(text, m.end())
+                    if after:
+                        is_citation, ref = _citation(after.group(1), translation)
+                        if is_citation:
+                            cited, marked = ref, True
+                    if (not marked and scripture and i + 1 < len(paragraphs)
+                            and paragraphs[i + 1][0] == heading
+                            and not words(text[:m.start()] + text[m.end():])):
+                        cited = _bare_citation(_MARKUP.sub("", paragraphs[i + 1][2]), translation)
+                        marked = cited is not None
+                    if not (scripture or marked):
+                        continue
+                    judged.append((quote, verdict(quote, heading, cited=cited,
+                                                  near=cited is None)))
+            for quotation, found in judged:
+                if found:
+                    out.append(Finding(severity=severity, rule=found[0], message=found[1],
+                                       source=source, piece=piece.path.name, line=line,
+                                       excerpt=first_words(quotation)))
+    return out
+
+
 CHECKS = [
     check_manifest,
     check_required_sections,
@@ -550,6 +767,7 @@ CHECKS = [
     check_lords_prayer,
     check_translation_consistency,
     check_scripture_copyright,
+    check_scripture_quotations,
     check_hymn_copyright,
     check_benediction,
     check_teacher_guide_ladder,
