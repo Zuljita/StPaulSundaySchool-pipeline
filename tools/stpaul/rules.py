@@ -56,20 +56,70 @@ def _lines(text: str) -> list[str]:
     return text.splitlines()
 
 
-def _find_pattern(piece: Piece, pattern: str, flags=re.I) -> list[tuple[int, str]]:
-    """Locate a regex in a piece's visible body, returning (line no, excerpt)."""
+def _find_pattern(piece: Piece, pattern: str, flags=re.I,
+                  lines: list[str] | None = None) -> list[tuple[int, str]]:
+    """Locate a regex in a piece's visible body, returning (line no, excerpt).
+
+    `lines`, when given, is searched instead of the body, line for line. The
+    rules about prose pass the body with verified Scripture blanked out.
+    """
     hits = []
     rx = re.compile(pattern, flags)
     # Offset so reported line numbers match the file as opened in an
     # editor, front matter included.
     offset = len(_lines(piece.raw)) - len(_lines(piece.body))
-    for i, line in enumerate(_lines(piece.body), start=1):
+    for i, line in enumerate(_lines(piece.body) if lines is None else lines, start=1):
         for m in rx.finditer(line):
             start = max(0, m.start() - 35)
             end = min(len(line), m.end() + 35)
             excerpt = ("..." if start else "") + line[start:end].strip() + ("..." if end < len(line) else "")
             hits.append((i + offset, excerpt))
     return hits
+
+
+def _prose_lines(rules: dict, lesson: Lesson, piece: Piece) -> list[str]:
+    """A piece's body, line for line, with verified Scripture blanked out.
+
+    Scripture that is the publisher's text, word for word, is not the
+    curriculum's prose, so the rules about prose do not read it: the em
+    dash, the forbidden phrases, the draft markers and the Lord's Prayer
+    form. The ESV prints em dashes, and a passage can use words a rule
+    forbids in the curriculum's own voice. Neither is a mistake in a
+    quotation.
+
+    Only Scripture that checks out is blanked. A misquotation is read by
+    every rule, as well as reported by check_scripture_quotations. Checks
+    out means what that rule means: in a lesson whose translation
+    scripture_quotations lists, a line that is wholly an excerpt of a
+    fetched passage, or a quotation in double quotes that is one. The
+    rules that need to see Scripture, the copyright notices among them, do
+    not use this and still read everything.
+    """
+    cached = piece.__dict__.get("_prose_lines")
+    if cached and cached[0] == id(rules):
+        return cached[1]
+    lines = _lines(piece.body)
+    spec = rules.get("scripture_quotations") or {}
+    translation = (lesson.translation or "").upper()
+    texts = [p.text for p in lesson_passages(lesson.meta) if p.text]
+    if spec and texts and translation in {str(t).upper() for t in spec.get("translations") or []}:
+        min_words = int(spec.get("min_words", 4))
+
+        def checks_out(text: str) -> bool:
+            return len(words(text)) >= min_words and any(is_excerpt(text, t) for t in texts)
+
+        blanked = []
+        for line in lines:
+            if checks_out(_uncited(_MARKUP.sub("", line), translation)):
+                line = " " * len(line)
+            else:
+                for m in _QUOTATION.finditer(line):
+                    if checks_out(_MARKUP.sub("", m.group(1))):
+                        line = line[:m.start(1)] + " " * (m.end(1) - m.start(1)) + line[m.end(1):]
+            blanked.append(line)
+        lines = blanked
+    piece.__dict__["_prose_lines"] = (id(rules), lines)
+    return lines
 
 
 def _exempt(rules: dict, level: str, ptype: str, section: str) -> bool:
@@ -86,7 +136,8 @@ def check_forbidden_characters(rules: dict, lesson: Lesson) -> list[Finding]:
     for spec in rules.get("forbidden_characters", []):
         ch = spec["char"]
         for piece in lesson.pieces:
-            for line_no, excerpt in _find_pattern(piece, re.escape(ch)):
+            for line_no, excerpt in _find_pattern(piece, re.escape(ch),
+                                                  lines=_prose_lines(rules, lesson, piece)):
                 out.append(Finding(
                     severity=spec.get("severity", ERROR),
                     rule=f"forbidden-character:{spec.get('name', ch)}",
@@ -102,7 +153,8 @@ def check_forbidden_phrases(rules: dict, lesson: Lesson) -> list[Finding]:
     for spec in rules.get("forbidden_phrases", []):
         pattern = spec["pattern"]
         for piece in lesson.pieces:
-            for line_no, excerpt in _find_pattern(piece, pattern):
+            for line_no, excerpt in _find_pattern(piece, pattern,
+                                                  lines=_prose_lines(rules, lesson, piece)):
                 out.append(Finding(
                     severity=spec.get("severity", ERROR),
                     rule=f"forbidden-phrase:{pattern}",
@@ -118,7 +170,8 @@ def check_draft_markers(rules: dict, lesson: Lesson) -> list[Finding]:
     out = []
     for pattern in spec.get("patterns", []):
         for piece in lesson.pieces:
-            for line_no, excerpt in _find_pattern(piece, pattern, flags=0):
+            for line_no, excerpt in _find_pattern(piece, pattern, flags=0,
+                                                  lines=_prose_lines(rules, lesson, piece)):
                 out.append(Finding(
                     severity=spec.get("severity", ERROR),
                     rule="draft-marker",
@@ -286,7 +339,8 @@ def check_lords_prayer(rules: dict, lesson: Lesson) -> list[Finding]:
         return []
     out = []
     for piece in lesson.pieces:
-        for line_no, excerpt in _find_pattern(piece, spec["forbidden_pattern"]):
+        for line_no, excerpt in _find_pattern(piece, spec["forbidden_pattern"],
+                                              lines=_prose_lines(rules, lesson, piece)):
             out.append(Finding(
                 severity=spec.get("severity", ERROR), rule="lords-prayer-form",
                 message=spec.get("message", ""), source=spec.get("source", ""),
