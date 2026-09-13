@@ -107,6 +107,11 @@ a new sentence, or a colon, whichever reads best in context." *Whichever
 reads best* is a judgment about someone else's prose. Flag it, quote the
 line, let the author choose.
 
+Scripture is not that prose. A quotation that checks out against the text
+`lesson.yml` fetched from the publisher is the publisher's words, and the
+rules about prose, the em dash among them, do not read it. Do not change a
+verse's punctuation to suit the Voice Guide.
+
 The same goes for anything under `open_conflicts` in the data repo's
 `rules.yml`. Those are contradictions between two standards documents.
 Picking a side is a doctrinal decision and it belongs to the pastor.

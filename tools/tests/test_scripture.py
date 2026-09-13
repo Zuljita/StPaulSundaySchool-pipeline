@@ -353,5 +353,75 @@ class QuotationRuleTestCase(unittest.TestCase):
         self.assertIn("scripture-mismatch", {f.rule for f in check_lesson(RULES, lesson)})
 
 
+PROSE_RULES = {
+    **RULES,
+    "forbidden_characters": [{"char": "—", "name": "em dash", "severity": "error"}],
+    "forbidden_phrases": [{"pattern": "\\bdelve\\b", "severity": "error"}],
+    "locked_strings": {"lords_prayer_form": {"severity": "error", "forbidden_pattern": "zeta eta"}},
+}
+
+# The same placeholder passage, carrying an em dash, a forbidden word and
+# the stand-in Lord's Prayer pattern, the way a real passage can.
+DASHED_GOSPEL = ("|-\n  1 ALPHA BETA—GAMMA DELTA. 2 EPSILON ZETA ETA THETA.\n\n"
+                 "  3 NU XI OMICRON PI RHO SIGMA TAU DELVE. 4 UPSILON PHI CHI PSI.")
+DASHED_TEXT = ("1 ALPHA BETA—GAMMA DELTA. 2 EPSILON ZETA ETA THETA. "
+               "3 NU XI OMICRON PI RHO SIGMA TAU DELVE. 4 UPSILON PHI CHI PSI. (ESV)")
+PROSE_FAMILIES = {"forbidden-character", "forbidden-phrase", "lords-prayer-form",
+                  "scripture-mismatch"}
+
+
+class ProseRulesTestCase(unittest.TestCase):
+    """Verified Scripture is the publisher's text, not the curriculum's prose.
+
+    The rules about prose, the em dash among them, do not read a quotation
+    that checks out against lesson.yml. They still read everything else,
+    including a quotation that does not check out.
+    """
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="stpaul-prose-"))
+        self.content = self.tmp / "content"
+        (self.content / SLUG / "pieces").mkdir(parents=True)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def hits(self, rules=PROSE_RULES, *, translation="ESV", text=DASHED_TEXT,
+             memory=MEMORY, talk=TALK):
+        (self.content / SLUG / "lesson.yml").write_text(
+            LESSON.format(translation=translation, gospel=DASHED_GOSPEL, cross="null"),
+            encoding="utf-8")
+        (self.content / SLUG / "pieces" / "06-primary-student-handout.md").write_text(
+            PIECE.format(text=text, memory=memory, talk=talk, extra=""), encoding="utf-8")
+        lesson = load_lesson(SLUG, content_dir=self.content)
+        return sorted(f.rule.split(":")[0] for f in check_lesson(rules, lesson)
+                      if f.rule.split(":")[0] in PROSE_FAMILIES)
+
+    def test_verified_scripture_is_not_read_as_prose(self):
+        self.assertEqual(self.hits(), [])
+
+    def test_a_misquotation_is_read_as_prose_too(self):
+        self.assertEqual(self.hits(text=DASHED_TEXT.replace("THETA", "OMEGA")),
+                         ["forbidden-character", "forbidden-phrase", "lords-prayer-form",
+                          "scripture-mismatch"])
+
+    def test_prose_beside_a_verified_quotation_is_still_read(self):
+        self.assertEqual(
+            self.hits(memory='"ALPHA BETA—GAMMA DELTA" (Luke 1:1 ESV) — say it twice.'),
+            ["forbidden-character"])
+
+    def test_the_curriculums_own_words_are_still_read(self):
+        self.assertEqual(self.hits(talk="Pray it: zeta eta."), ["lords-prayer-form"])
+
+    def test_without_the_scripture_block_everything_is_read(self):
+        rules = {k: v for k, v in PROSE_RULES.items() if k != "scripture_quotations"}
+        self.assertEqual(self.hits(rules),
+                         ["forbidden-character", "forbidden-phrase", "lords-prayer-form"])
+
+    def test_a_sunday_in_another_translation_is_read_in_full(self):
+        self.assertEqual(self.hits(translation="NKJV"),
+                         ["forbidden-character", "forbidden-phrase", "lords-prayer-form"])
+
+
 if __name__ == "__main__":
     unittest.main()
