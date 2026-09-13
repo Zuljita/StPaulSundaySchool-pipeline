@@ -28,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
+from stpaul import runner
 from stpaul.approval import load_approval, verify
 from stpaul.hashing import content_hash
 from stpaul.model import CONTENT_DIR, DATA_ROOT, all_sundays, load_lesson, load_rules
@@ -111,7 +112,17 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("sunday", nargs="*")
+    runner.add_local_flag(ap)
     args = ap.parse_args()
+
+    refused = runner.refusal(
+        "make_review.py",
+        "The data repository's refresh-review-data workflow regenerates and commits "
+        "review/data on every push to main, and this repository's publish workflow "
+        "runs it before each publish.", args.local)
+    if refused:
+        print(refused, file=sys.stderr)
+        return 2
 
     slugs = args.sunday or all_sundays()
     if not slugs:

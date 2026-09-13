@@ -45,6 +45,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
+from stpaul import runner
 from stpaul.approval import verify
 from stpaul.hashing import content_hash
 from stpaul.model import (APPROVALS_DIR, CONTENT_DIR, DATA_ROOT, DIST_DIR,
@@ -307,7 +308,16 @@ def main() -> int:
     ap.add_argument("sunday", nargs="*", help="default: every built Sunday")
     ap.add_argument("--dist", default=str(DIST_DIR), help="where build.py wrote")
     ap.add_argument("--out", default=str(DEFAULT_OUT), help="where to stage the bucket")
+    runner.add_local_flag(ap)
     args = ap.parse_args()
+
+    refused = runner.refusal(
+        "publish_site.py",
+        "This repository's publish workflow stages the site on a schedule and within "
+        "a minute of an approval.", args.local)
+    if refused:
+        print(refused, file=sys.stderr)
+        return 2
 
     dist = Path(args.dist)
     if not dist.is_dir():
