@@ -39,7 +39,7 @@ from stpaul.approval import verify
 from stpaul.hashing import ALGORITHM, content_hash
 from stpaul.model import (CONTENT_DIR, DATA_ROOT, DIST_DIR, REPO_ROOT, all_sundays,
                           load_lesson, load_rules)
-from stpaul.render import appexport, docx_render, handoff, package, pdf_render, site
+from stpaul.render import appexport, handoff, package, sheet, site
 from stpaul.rules import check_lesson, summarize
 
 
@@ -95,12 +95,16 @@ def build_one(slug: str, *, draft: bool, skip_pdf: bool = False,
     written += appexport.write(lesson, out_dir, digest)
     written += site.write(lesson, out_dir, digest, draft=draft)
 
+    # The printed sheets, to the design system. PDF is not made here: it
+    # takes a browser, and this pass stays pure Python so that a build is
+    # a function of the approved bytes and nothing else. publish.yml runs
+    # tools/print_pdf.py over what this writes.
     handouts = out_dir / "handouts"
+    written += sheet.write_assets(handouts, lesson)
     for piece in lesson.pieces:
-        stem = f"{piece.order:02d}-{piece.id}" + ("-DRAFT" if draft else "")
-        written.append(docx_render.render(lesson, piece, digest, handouts / f"{stem}.docx"))
-        if not skip_pdf:
-            written.append(pdf_render.render(lesson, piece, digest, handouts / f"{stem}.pdf"))
+        written.append(sheet.render(lesson, piece, digest,
+                                    handouts / sheet.filename(piece, draft=draft),
+                                    draft=draft))
 
     # Last, because it archives what the renderers above just wrote.
     zip_path = package.write(out_dir, slug, draft=draft,

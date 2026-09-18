@@ -136,7 +136,12 @@ def parse_exact_reference(text: str) -> Ref | None:
 # Comparing words
 # ---------------------------------------------------------------------
 
-_VERSE_MARK = re.compile(r"\[\d+(?::\d+)?\]")
+# How the publisher marks a verse in the text fetch_scripture writes into
+# lesson.yml: "[24]", or "[6:24]" where a chapter turns. Three places need
+# it — the word comparison below strips it, the fetcher counts with it, and
+# the print renderer sets the captured number as a superscript — so it is
+# public and there is one of it. The group is the verse.
+VERSE_MARK = re.compile(r"\[(?:\d+:)?(\d+)\]")
 _WORD = re.compile(r"[a-z]+(?:'[a-z]+)*")
 _ELLIPSIS = re.compile(r"\.\s?\.\s?\.")
 _APOSTROPHES = str.maketrans({"’": "'", "‘": "'", "ʼ": "'"})
@@ -151,7 +156,7 @@ def words(text: str) -> list[str]:
     changed, added, dropped or reordered word is a different text.
     """
     t = unicodedata.normalize("NFKC", text or "").translate(_APOSTROPHES)
-    t = _VERSE_MARK.sub(" ", t)
+    t = VERSE_MARK.sub(" ", t)
     return _WORD.findall(t.lower())
 
 

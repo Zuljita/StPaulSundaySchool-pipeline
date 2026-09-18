@@ -47,7 +47,7 @@ from .appexport import LEVEL_HEADINGS, LEVEL_ORDER
 from .blocks import blocks
 from .handoff import LEVEL_LABELS, PIECE_LABELS, piece_heading
 
-# Inline emphasis, matched the same way docx_render matches it.
+# Inline emphasis, matched the same way sheet.py matches it.
 INLINE = re.compile(r"(\*\*.+?\*\*|\*.+?\*)")
 
 # Where the printable handouts live once published. The site links to
@@ -470,7 +470,7 @@ def _esc(text: str) -> str:
 
 
 def _inline(text: str) -> str:
-    """Escape, then honour **bold** and *italic*, as docx_render does."""
+    """Escape, then honour **bold** and *italic*, as sheet.py does."""
     out = []
     for part in INLINE.split(text or ""):
         if not part:
@@ -822,10 +822,12 @@ def render_sunday(lesson: Lesson, source_hash: str, *, draft: bool = False) -> s
                 "<li>",
                 f'<span class="name"><a href="/{_esc(lesson.slug)}/pieces/'
                 f'{_esc(piece_filename(p))}">{_esc(name)}</a></span>',
+                # PDF only. The DOCX went with the renderer that made it:
+                # Core Standards section 4 ends production at a text handoff,
+                # and a Word file was a second, editable copy of approved text
+                # with nothing holding it to the approved bytes.
                 f'<span class="dl"><a href="{HANDOUT_ROOT}/{_esc(lesson.slug)}/'
                 f'{_esc(stem)}.pdf">PDF</a></span>',
-                f'<span class="dl"><a href="{HANDOUT_ROOT}/{_esc(lesson.slug)}/'
-                f'{_esc(stem)}.docx">DOCX</a></span>',
                 "</li>",
             ]
         body += ["</ul>", "</div>"]

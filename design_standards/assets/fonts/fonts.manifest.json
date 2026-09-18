@@ -1,0 +1,267 @@
+{
+  "query": "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Montserrat:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=block",
+  "files": [
+    {
+      "file": "InstrumentSerif-400-italic-latin-ext.woff2",
+      "sha256": "d0014821252a8a770bf7551641572f239a8ede83d75652d84fef0c3627751baf",
+      "bytes": 12384,
+      "source": "https://fonts.gstatic.com/s/instrumentserif/v5/jizHRFtNs2ka5fXjeivQ4LroWlx-6zAjgn7MsNo.woff2"
+    },
+    {
+      "file": "InstrumentSerif-400-italic-latin.woff2",
+      "sha256": "5a51946dfffa82972bc98745359c46761515641fda557c25116459a9f83da4a7",
+      "bytes": 22128,
+      "source": "https://fonts.gstatic.com/s/instrumentserif/v5/jizHRFtNs2ka5fXjeivQ4LroWlx-6zAjjH7M.woff2"
+    },
+    {
+      "file": "InstrumentSerif-400-normal-latin-ext.woff2",
+      "sha256": "290e6267dd833bf5f899eba4c29ad0a9b09dbe53f6075b18af38057159e1ff20",
+      "bytes": 11604,
+      "source": "https://fonts.gstatic.com/s/instrumentserif/v5/jizBRFtNs2ka5fXjeivQ4LroWlx-6zsTjmbI.woff2"
+    },
+    {
+      "file": "InstrumentSerif-400-normal-latin.woff2",
+      "sha256": "5eb09b5ac0e28b67c2f041c8ba6d244604ca0c0980d65912ab2d47fed84ddc31",
+      "bytes": 21032,
+      "source": "https://fonts.gstatic.com/s/instrumentserif/v5/jizBRFtNs2ka5fXjeivQ4LroWlx-6zUTjg.woff2"
+    },
+    {
+      "file": "Montserrat-400-normal-latin-ext.woff2",
+      "sha256": "30f166cea0894715f7b1342798306dd4206bc1d0331440d543f6e7f7fff04539",
+      "bytes": 32272,
+      "source": "https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCtr6Hw3aXpsog.woff2"
+    },
+    {
+      "file": "Montserrat-400-normal-latin.woff2",
+      "sha256": "e66bcd2761ab6924b25ce70dafe10e57a39193c4fea1516730bd9cb5240af6c8",
+      "bytes": 18780,
+      "source": "https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCtr6Hw5aXo.woff2"
+    },
+    {
+      "file": "Montserrat-500-normal-latin-ext.woff2",
+      "sha256": "e28f60d292d6574d2cb5c0b63fd3e893ae6d9a17d698afc9d037643dcfde4228",
+      "bytes": 32292,
+      "source": "https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCtZ6Hw3aXpsog.woff2"
+    },
+    {
+      "file": "Montserrat-500-normal-latin.woff2",
+      "sha256": "2b53300fb9471520df2f4905847fb7a209879b2029ae893c05c6ee346b1320cd",
+      "bytes": 18748,
+      "source": "https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCtZ6Hw5aXo.woff2"
+    },
+    {
+      "file": "Montserrat-600-normal-latin-ext.woff2",
+      "sha256": "1d8a4af6a50cc4f7561e8484d5bff39acda90016b8e8cbb5cee69c253bb02750",
+      "bytes": 33192,
+      "source": "https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCu173w3aXpsog.woff2"
+    },
+    {
+      "file": "Montserrat-600-normal-latin.woff2",
+      "sha256": "d857325c360f7128b347ca924c1974967aaa886ba47dad22e4042d6c38b26a83",
+      "bytes": 18688,
+      "source": "https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCu173w5aXo.woff2"
+    },
+    {
+      "file": "SourceSerif4-400-italic-latin-ext.woff2",
+      "sha256": "d05b8e57c5d272963ec3777e97e215aec2f8eddb06a06530d6717e9981d9d791",
+      "bytes": 18480,
+      "source": "https://fonts.gstatic.com/s/sourceserif4/v14/vEF02_tTDB4M7-auWDN0ahZJW1ge6NmXpVAHV83Bfb_US2D2QYxoUKIkn98pRl9tAsQCnjU.woff2"
+    },
+    {
+      "file": "SourceSerif4-400-italic-latin.woff2",
+      "sha256": "882b7c150c29f29d4f8daae6b8dcae8662aac7f28ca34b34615305154136ecfd",
+      "bytes": 20092,
+      "source": "https://fonts.gstatic.com/s/sourceserif4/v14/vEF02_tTDB4M7-auWDN0ahZJW1ge6NmXpVAHV83Bfb_US2D2QYxoUKIkn98pRl9tDMQC.woff2"
+    },
+    {
+      "file": "SourceSerif4-400-normal-latin-ext.woff2",
+      "sha256": "cd757b37ff5e4ee2d18c45699df87093d233d98bac45ed682a51505a1914d25c",
+      "bytes": 17828,
+      "source": "https://fonts.gstatic.com/s/sourceserif4/v14/vEFy2_tTDB4M7-auWDN0ahZJW3IX2ih5nk3AucvUHf6OAVIJmeUDygwjihdqnhVdDtwG.woff2"
+    },
+    {
+      "file": "SourceSerif4-400-normal-latin.woff2",
+      "sha256": "02194deb92d3975dd30e11a3824a1f1db32b48c93654e60560cb81ce8e7b5f95",
+      "bytes": 20088,
+      "source": "https://fonts.gstatic.com/s/sourceserif4/v14/vEFy2_tTDB4M7-auWDN0ahZJW3IX2ih5nk3AucvUHf6OAVIJmeUDygwjihdqnhtdDg.woff2"
+    },
+    {
+      "file": "SourceSerif4-600-normal-latin-ext.woff2",
+      "sha256": "351f7c7a0db5732b008c62d26a8e2b1d2d110449026b8168d4240d07985a7e49",
+      "bytes": 18376,
+      "source": "https://fonts.gstatic.com/s/sourceserif4/v14/vEFy2_tTDB4M7-auWDN0ahZJW3IX2ih5nk3AucvUHf6OAVIJmeUDygwjisltnhVdDtwG.woff2"
+    },
+    {
+      "file": "SourceSerif4-600-normal-latin.woff2",
+      "sha256": "f2b7e1cf1d277b7608231868135648f8ad8e2b58d8e97ca088bee15dc357bee7",
+      "bytes": 21532,
+      "source": "https://fonts.gstatic.com/s/sourceserif4/v14/vEFy2_tTDB4M7-auWDN0ahZJW3IX2ih5nk3AucvUHf6OAVIJmeUDygwjisltnhtdDg.woff2"
+    }
+  ],
+  "faces": [
+    {
+      "file": "InstrumentSerif-400-italic-latin-ext.woff2",
+      "family": "Instrument Serif",
+      "style": "italic",
+      "weight": "400",
+      "stretch": "",
+      "unicode_range": "U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF",
+      "subset": "latin-ext"
+    },
+    {
+      "file": "InstrumentSerif-400-italic-latin.woff2",
+      "family": "Instrument Serif",
+      "style": "italic",
+      "weight": "400",
+      "stretch": "",
+      "unicode_range": "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD",
+      "subset": "latin"
+    },
+    {
+      "file": "InstrumentSerif-400-normal-latin-ext.woff2",
+      "family": "Instrument Serif",
+      "style": "normal",
+      "weight": "400",
+      "stretch": "",
+      "unicode_range": "U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF",
+      "subset": "latin-ext"
+    },
+    {
+      "file": "InstrumentSerif-400-normal-latin.woff2",
+      "family": "Instrument Serif",
+      "style": "normal",
+      "weight": "400",
+      "stretch": "",
+      "unicode_range": "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD",
+      "subset": "latin"
+    },
+    {
+      "file": "Montserrat-400-normal-latin-ext.woff2",
+      "family": "Montserrat",
+      "style": "normal",
+      "weight": "400",
+      "stretch": "",
+      "unicode_range": "U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF",
+      "subset": "latin-ext"
+    },
+    {
+      "file": "Montserrat-400-normal-latin.woff2",
+      "family": "Montserrat",
+      "style": "normal",
+      "weight": "400",
+      "stretch": "",
+      "unicode_range": "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD",
+      "subset": "latin"
+    },
+    {
+      "file": "Montserrat-500-normal-latin-ext.woff2",
+      "family": "Montserrat",
+      "style": "normal",
+      "weight": "500",
+      "stretch": "",
+      "unicode_range": "U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF",
+      "subset": "latin-ext"
+    },
+    {
+      "file": "Montserrat-500-normal-latin.woff2",
+      "family": "Montserrat",
+      "style": "normal",
+      "weight": "500",
+      "stretch": "",
+      "unicode_range": "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD",
+      "subset": "latin"
+    },
+    {
+      "file": "Montserrat-600-normal-latin-ext.woff2",
+      "family": "Montserrat",
+      "style": "normal",
+      "weight": "600",
+      "stretch": "",
+      "unicode_range": "U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF",
+      "subset": "latin-ext"
+    },
+    {
+      "file": "Montserrat-600-normal-latin.woff2",
+      "family": "Montserrat",
+      "style": "normal",
+      "weight": "600",
+      "stretch": "",
+      "unicode_range": "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD",
+      "subset": "latin"
+    },
+    {
+      "file": "SourceSerif4-400-italic-latin-ext.woff2",
+      "family": "Source Serif 4",
+      "style": "italic",
+      "weight": "400",
+      "stretch": "",
+      "unicode_range": "U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF",
+      "subset": "latin-ext"
+    },
+    {
+      "file": "SourceSerif4-400-italic-latin.woff2",
+      "family": "Source Serif 4",
+      "style": "italic",
+      "weight": "400",
+      "stretch": "",
+      "unicode_range": "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD",
+      "subset": "latin"
+    },
+    {
+      "file": "SourceSerif4-400-normal-latin-ext.woff2",
+      "family": "Source Serif 4",
+      "style": "normal",
+      "weight": "400",
+      "stretch": "",
+      "unicode_range": "U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF",
+      "subset": "latin-ext"
+    },
+    {
+      "file": "SourceSerif4-400-normal-latin.woff2",
+      "family": "Source Serif 4",
+      "style": "normal",
+      "weight": "400",
+      "stretch": "",
+      "unicode_range": "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD",
+      "subset": "latin"
+    },
+    {
+      "file": "SourceSerif4-600-normal-latin-ext.woff2",
+      "family": "Source Serif 4",
+      "style": "normal",
+      "weight": "600",
+      "stretch": "",
+      "unicode_range": "U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF",
+      "subset": "latin-ext"
+    },
+    {
+      "file": "SourceSerif4-600-normal-latin.woff2",
+      "family": "Source Serif 4",
+      "style": "normal",
+      "weight": "600",
+      "stretch": "",
+      "unicode_range": "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD",
+      "subset": "latin"
+    }
+  ],
+  "licences": [
+    {
+      "family": "Instrument Serif",
+      "file": "OFL-InstrumentSerif.txt",
+      "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/instrumentserif/OFL.txt",
+      "copyright": "Copyright 2022 The Instrument Serif Project Authors (https://github.com/Instrument/instrument-serif)"
+    },
+    {
+      "family": "Montserrat",
+      "file": "OFL-Montserrat.txt",
+      "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/OFL.txt",
+      "copyright": "Copyright 2024 The Montserrat.Git Project Authors (https://github.com/JulietaUla/Montserrat.git)"
+    },
+    {
+      "family": "Source Serif 4",
+      "file": "OFL-SourceSerif4.txt",
+      "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/sourceserif4/OFL.txt",
+      "copyright": "Copyright 2014 The Source Serif 4 Project Authors (https://github.com/adobe-fonts/source-serif)"
+    }
+  ]
+}

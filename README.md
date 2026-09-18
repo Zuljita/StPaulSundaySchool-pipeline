@@ -88,10 +88,17 @@ comparison.
 
 **The site is a renderer, not an export.** An export is handed to another
 system that re-derives a reading of it, which is how the handouts and the
-app came to disagree in the first place. `render/site.py` runs beside the
-DOCX and the PDF over the same parse, so there is no second derivation
-left to drift, and all three read one shared block parser rather than
-three copies of it.
+app came to disagree in the first place. `render/site.py` runs beside
+`render/sheet.py` over the same parse, so there is no second derivation
+left to drift, and both read one shared block parser rather than two
+copies of it.
+
+**The printed sheets are the design system, read at build time.** Core
+Standards section 5 puts every visual decision in the design project, so
+`render/sheet.py` loads `design_standards/tokens/*.css` off disk rather
+than restating a palette and a type scale in Python. Change a token there
+and the next build prints it; a test fails if a colour or a typeface is
+ever written into the renderer.
 
 **Reproducible.** Two builds of the same approved bytes produce the same
 files, byte for byte, on Windows and on Linux alike. That is what makes
@@ -116,7 +123,7 @@ word for word.
 For working on the pipeline itself. Running it is the workflows' job.
 
 ```powershell
-pip install pyyaml python-docx reportlab pypdf
+pip install pyyaml pypdf
 $env:STPAUL_DATA = "D:\dev\StPaulSundaySchool"    # PowerShell
 # export STPAUL_DATA=/path/to/data-repo           # bash
 ```
@@ -146,7 +153,8 @@ working on those tools, not for doing their jobs by hand.
 | Path | |
 |---|---|
 | `tools/stpaul/` | model, rule engine, canonical hashing, approval gate |
-| `tools/stpaul/render/` | brand constants, block parser, handoff, DOCX, PDF, site, package, app export |
+| `tools/stpaul/render/` | block parser, handoff, printed sheets, site, package, app export |
+| `design_standards/` | the design system: tokens, components, guidelines, the vendored faces |
 | `tools/*.py` | the CLI: lint, verify, approve, build, importers, audits |
 | `tools/tests/` | tests, with fixture data |
 | `review/` | the review app, bundled into the Worker at deploy |
@@ -159,7 +167,10 @@ working on those tools, not for doing their jobs by hand.
 | `verify.py` | Does content still match its approval? |
 | `history.py` | Who approved what, when, and whether it still applies. |
 | `approve.py` | Record a review from the command line, for development only. Approvals come from the review app. |
-| `build.py` | Render handoff, DOCX, PDF, web site, ZIP and app export. Refuses unapproved. |
+| `build.py` | Render handoff, printed sheets, web site, ZIP and app export. Refuses unapproved. |
+| `fit_check.py` | Does any sheet run past the page box? Run by `publish.yml`. |
+| `print_pdf.py` | Turn the built sheets into PDFs, in a browser. Run by `publish.yml`. |
+| `fetch_fonts.py` | Vendor the three design-system faces. Run by hand when a face changes. |
 | `publish_site.py` | Stage the site for R2. Re-checks hash and approval; skips drafts. Run by `publish.yml`. |
 | `publish_r2.py` | Upload a staged site. Run by `publish.yml`. |
 | `make_icons.py` | Cut the app icons out of the church logo. |
@@ -223,6 +234,7 @@ rather than a setting changed inside a tool.
 
 Nothing here is specific to one congregation except the defaults. The
 rules, the roster, the standards documents and all content live in the
-data repository; this repository is the machinery. The brand constants in
-`tools/stpaul/render/brand.py` and the piece manifest in `rules.yml` are
-where another parish would start.
+data repository; this repository is the machinery. The design system in
+`design_standards/` and the piece manifest in `rules.yml` are where
+another parish would start: swap the tokens under `design_standards/
+tokens/` for your own palette and type, and the printed sheets follow.

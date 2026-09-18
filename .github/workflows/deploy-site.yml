@@ -47,7 +47,7 @@ jobs:
           node-version: "20"
 
       - name: Install
-        run: pip install --quiet pyyaml python-docx reportlab pypdf
+        run: pip install --quiet pyyaml pypdf
 
       - name: Tests
         # Run before shipping. test_site.py is the reason: it holds the

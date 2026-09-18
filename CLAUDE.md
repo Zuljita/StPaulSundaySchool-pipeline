@@ -18,6 +18,11 @@ clock-dependent output. Two builds of the same approved bytes produce the
 same files. That property is the only reason the printed handouts and the
 app can be trusted to say the same thing.
 
+`build.py` is also pure Python, and stays that way. Turning a sheet into
+paper takes a browser, so `fit_check.py` and `print_pdf.py` are separate
+steps that publish.yml runs over what `build.py` wrote. Both refuse to run
+off a runner without `--local`.
+
 ## Why this exists
 
 A postmortem, not caution in the abstract. The old pipeline reviewed at
@@ -46,6 +51,7 @@ None of them waits for a person to remember it.
 | Refresh `review/data` | data repo, `refresh-review-data.yml` | a push to `main` that changes content |
 | Build what is approved | data repo, `build-approved.yml` | a new approval |
 | Build and publish the site | here, `publish.yml` | an approval, and hourly |
+| Check page fit, print the PDFs | here, `publish.yml` | in the same run, after the build |
 | Deploy the Workers | here, `deploy.yml` and `deploy-site.yml` | a push to `main` that touches them |
 
 So:
@@ -63,8 +69,9 @@ So:
   workflow goes to the maintainer, in the pull request. It does not go to
   the pastor, and it does not go in an email for the pastor to pass on.
 - **Tools that belong to a workflow refuse to run anywhere else.**
-  `fetch_scripture.py`, `make_review.py`, `publish_site.py`, `publish_r2.py`
-  and `approve.py` stop and say what does their job. `--local` exists so
+  `fetch_scripture.py`, `make_review.py`, `publish_site.py`, `publish_r2.py`,
+  `fit_check.py`, `print_pdf.py` and `approve.py` stop and say what does
+  their job. `--local` exists so
   the maintainer can work on those tools. Do not pass it to get something
   done, and do not tell anyone else to.
 
@@ -80,6 +87,14 @@ was needed: on a runner the network is open and the key is a secret.
 - Fix a bug in `tools/`, with a test.
 - Add a renderer, keeping it deterministic.
 - Improve the review app or the service.
+
+**Design decisions are not yours either.** Core Standards §5 puts the
+palette, the type scale, the page geometry and the component anatomy in
+the design project, which lives at `design_standards/`: "If a design fact
+is needed, it is read from there, not remembered." `render/sheet.py` reads
+the tokens off disk for that reason, and a test fails if a colour or a
+typeface is written into the renderer. When the design system does not
+settle something, say so and leave it to the pastor rather than picking.
 
 **No:**
 - Do not write curriculum prose. Not in an importer, not in a "tidy up"
@@ -133,4 +148,13 @@ python -m unittest discover -s tools\tests   # no data repo needed
 python tools\lint.py --baseline              # reads only
 python tools\verify.py                       # reads only
 python tools\build.py <sunday> --draft       # a watermarked proof, never published
+python tools\fetch_fonts.py                  # verify the vendored faces
+```
+
+Two steps need a browser and belong to `publish.yml`. `--local` is for
+working on them, and is not a way to print a set for somebody:
+
+```powershell
+python tools\fit_check.py dist-draft\<sunday>\handouts --local
+python tools\print_pdf.py dist-draft\<sunday>\handouts --local
 ```

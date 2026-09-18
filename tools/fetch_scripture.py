@@ -89,7 +89,8 @@ if hasattr(sys.stdout, "reconfigure"):
 from stpaul import runner  # noqa: E402
 from stpaul.approval import APPROVED, load_approval  # noqa: E402
 from stpaul.model import APPROVALS_DIR, CONTENT_DIR, all_sundays  # noqa: E402
-from stpaul.scripture import Ref, is_excerpt, lesson_passages, words  # noqa: E402
+from stpaul.scripture import (VERSE_MARK, Ref, is_excerpt,  # noqa: E402
+                              lesson_passages, words)
 
 TRANSLATION = "ESV"
 ENDPOINT = "https://api.esv.org/v3/passage/text/"
@@ -123,7 +124,6 @@ PASSAGE_OPTIONS = {
 PACE_SECONDS = 0.5
 
 SLUG = re.compile(r"\d{4}-\d{2}-\d{2}-[a-z0-9-]+")
-_VERSE_NUMBER = re.compile(r"\[(?:\d+:)?(\d+)\]")
 _BLOCK_HEADER = re.compile(r"[|>][-+0-9]*(?P<comment>[ \t]+#.*)?")
 
 
@@ -204,11 +204,11 @@ class Crossway:
 
 def shape(raw: str, ref: Ref) -> tuple[str, int]:
     """Crossway's text as lesson.yml stores it, and how many verses it holds."""
-    verses = len(_VERSE_NUMBER.findall(raw))
+    verses = len(VERSE_MARK.findall(raw))
     text = raw.replace("\r\n", "\n").replace("\r", "\n")
     for separator in (" ", " ", "\x85"):
         text = text.replace(separator, "\n")
-    text = _VERSE_NUMBER.sub("" if ref.single_verse else r"\1", text)
+    text = VERSE_MARK.sub("" if ref.single_verse else r"\1", text)
     lines: list[str] = []
     for line in text.split("\n"):
         line = re.sub(r"[ \t]+", " ", line).strip()
