@@ -726,8 +726,18 @@ def _lines(count: int) -> str:
     return '<div class="lines">' + "<span></span>" * count + "</div>"
 
 
-def _footer(left: str, right: str, credit: str = "") -> str:
-    tail = f'<p class="credit">{credit}</p>' if credit else ""
+def _footer(left: str, right: str, credit: list[str] | None = None) -> str:
+    """design_standards/CLAUDE.md, "Footers".
+
+    "Montserrat 9px uppercase, hairline rule above, pinned to the foot of
+    the sheet: piece and date left, 'Page n of m' right. The ESV /
+    hymn-license / authorship credit line appears once per document, in
+    8.5px sentence case under the running line."
+
+    Once per document is why the credit is passed in rather than built
+    here: only the last page gets it.
+    """
+    tail = "".join(f'<p class="credit">{c}</p>' for c in (credit or []) if c)
     return (f'<footer class="sheet"><div class="line"><span>{left}</span>'
             f"<span>{right}</span></div>{tail}</footer>")
 
@@ -740,6 +750,51 @@ def _page(inner: str, *, lesson_padding: bool = False, draft: bool = False) -> s
     cls = "page lesson" if lesson_padding else "page"
     mark = '<span class="draft-mark">Draft · do not distribute</span>' if draft else ""
     return f'<section class="{cls}">{mark}<div class="inner">{inner}</div></section>'
+
+
+def _paginate(parts: list[tuple[str, bool]], *, chip: str, date: str,
+              credit: list[str], draft: bool) -> list[str]:
+    """Stamp the footers, once the page count is known.
+
+    A skeleton cannot write its own footers: "Page n of m" needs the
+    total, and the credit line goes on the last page only. So a skeleton
+    returns page bodies and this puts the feet on them.
+    """
+    total = len(parts)
+    left = " · ".join(x for x in (chip, date) if x)
+    out = []
+    for i, (body, lesson_padding) in enumerate(parts, 1):
+        foot = _footer(left, f"Page {i} of {total}",
+                       credit if i == total else None)
+        out.append(_page(body + foot, lesson_padding=lesson_padding, draft=draft))
+    return out
+
+
+def _credits(lesson: Lesson, piece: Piece, section: Section | None) -> list[str]:
+    """The credit line, in the footer where the design system puts it.
+
+    It was a body block, which is why a teacher's guide spent a fifth of
+    a page on copyright notices set at reading size. The design gives it
+    8.5px sentence case under the running line, once per document, and
+    `SheetFooter` has had a slot for it all along.
+
+    Both sources print when both exist. `lesson.yml`'s notice is the
+    publisher's, per audience; the piece's Credits section is what the
+    pastor approved on that sheet, and today it is the only one filled in.
+    Preferring one would drop the other, and neither is this renderer's
+    to drop. The heading is not printed: the design names no label for
+    this line, and "Credits" is a handle in the source rather than
+    something a reader needs.
+    """
+    out = []
+    notice = _notice(lesson, piece)
+    if notice:
+        out.append(notice)
+    if section is not None:
+        for kind, block in blocks(section.body):
+            if kind != "rule":
+                out.append(_inline(block))
+    return out
 
 
 class Pool:
@@ -1103,7 +1158,6 @@ def _teacher_guide(lesson: Lesson, piece: Piece, pool: Pool, *,
     date, occasion, reference = _meta(lesson)
     season, season_var = _season(lesson)
     chip = _chip_text(lesson, piece)
-    foot = _footer(chip, date, _notice(lesson, piece))
     running = f"{occasion} · {date}".strip(" ·")
 
     needs = pool.take("What You Need")
@@ -1130,7 +1184,6 @@ def _teacher_guide(lesson: Lesson, piece: Piece, pool: Pool, *,
         _theme_line(_theme(lesson)),
         _frame(rail, "".join([_block(teacher), _pair_from(lesson, law_gospel),
                               _block(memory), _block(hymn)])),
-        foot,
     ])
 
     # Page 2 — the Gospel in full, then the questions beside the Catechism.
@@ -1144,7 +1197,6 @@ def _teacher_guide(lesson: Lesson, piece: Piece, pool: Pool, *,
     page2 = "".join([
         _running_header(chip, running),
         f'<div class="stack stack-lg">{body2}</div>',
-        foot,
     ]) if body2 else ""
 
     # Page 3 — The Lesson. The spec prints every prayer inline at the step
@@ -1153,19 +1205,19 @@ def _teacher_guide(lesson: Lesson, piece: Piece, pool: Pool, *,
     # about where a teacher reads it and the guides disagree already. The
     # primary guide's Closing Prayer reads "See Step 6 above", so on that
     # level it is a pointer; on high school it is the prayer itself.
-    body3 = _steps(the_lesson) + _block(prayer) + _block(credits)
+    body3 = _steps(the_lesson) + _block(prayer)
     page3 = "".join([
         _running_header(chip, running),
         f'<div class="stack stack-lg">{body3}</div>',
-        foot,
     ]) if body3 else ""
 
-    pages = [_page(page1, draft=draft)]
+    parts = [(page1, False)]
     if page2:
-        pages.append(_page(page2, draft=draft))
+        parts.append((page2, False))
     if page3:
-        pages.append(_page(page3, lesson_padding=True, draft=draft))
-    return pages
+        parts.append((page3, True))
+    return _paginate(parts, chip=chip, date=date, draft=draft,
+                     credit=_credits(lesson, piece, credits))
 
 
 # A block has to be this long before it can be mistaken for the passage.
@@ -1228,7 +1280,6 @@ def _student_handout(lesson: Lesson, piece: Piece, pool: Pool, *,
     date, occasion, reference = _meta(lesson)
     season, season_var = _season(lesson)
     chip = _chip_text(lesson, piece)
-    foot = _footer(chip, date, _notice(lesson, piece))
 
     catechism = pool.take("From the Small Catechism", "Catechism Connection")
     memory = pool.take("Memory Work")
@@ -1252,8 +1303,6 @@ def _student_handout(lesson: Lesson, piece: Piece, pool: Pool, *,
     # The design system sets the activities as a two-up band. An odd one
     # out takes the full width rather than leaving a hole in the grid.
     cards = [_block(s) for s in activities]
-    if credits:
-        cards.append(_block(credits))
     even = len(cards) - len(cards) % 2
     band = ""
     if cards[:even]:
@@ -1271,9 +1320,9 @@ def _student_handout(lesson: Lesson, piece: Piece, pool: Pool, *,
                   season=season, season_var=season_var),
         _theme_line(_theme(lesson)),
         _frame(rail, f"{gospel_block}{panel}{band}"),
-        foot,
     ])
-    return [_page(page, draft=draft)]
+    return _paginate([(page, False)], chip=chip, date=date, draft=draft,
+                     credit=_credits(lesson, piece, credits))
 
 
 def _family_take_home(lesson: Lesson, piece: Piece, pool: Pool, *,
@@ -1282,7 +1331,6 @@ def _family_take_home(lesson: Lesson, piece: Piece, pool: Pool, *,
     date, occasion, reference = _meta(lesson)
     season, season_var = _season(lesson)
     chip = _chip_text(lesson, piece)
-    foot = _footer(chip, date, _notice(lesson, piece))
     running = f"{occasion} · {date}".strip(" ·")
 
     verse = pool.take("The Verse to Say this Week", "Memory Work")
@@ -1306,21 +1354,20 @@ def _family_take_home(lesson: Lesson, piece: Piece, pool: Pool, *,
                   season=season, season_var=season_var),
         _theme_line(_theme(lesson)),
         f'<div class="stack stack-lg">{panel}{_block(heard)}{band}</div>',
-        foot,
     ])
 
     body2 = "".join([_block(catechism), _block(prayer), _block(hymn),
-                     _flow(rest), _block(credits)])
+                     _flow(rest)])
     page2 = "".join([
         _running_header(chip, running),
         f'<div class="stack stack-lg">{body2}</div>',
-        foot,
     ]) if body2 else ""
 
-    pages = [_page(page1, draft=draft)]
+    parts = [(page1, False)]
     if page2:
-        pages.append(_page(page2, draft=draft))
-    return pages
+        parts.append((page2, False))
+    return _paginate(parts, chip=chip, date=date, draft=draft,
+                     credit=_credits(lesson, piece, credits))
 
 
 def _nursery_notes(lesson: Lesson, piece: Piece, pool: Pool, *,
@@ -1338,7 +1385,6 @@ def _nursery_notes(lesson: Lesson, piece: Piece, pool: Pool, *,
     date, occasion, reference = _meta(lesson)
     season, season_var = _season(lesson)
     chip = _chip_text(lesson, piece)
-    foot = _footer(chip, date, _notice(lesson, piece))
 
     prayer = pool.take("Closing Prayer")
     credits = pool.take("Credits")
@@ -1350,10 +1396,10 @@ def _nursery_notes(lesson: Lesson, piece: Piece, pool: Pool, *,
                   occasion=occasion, reference=reference,
                   season=season, season_var=season_var),
         _theme_line(_theme(lesson)),
-        _frame(rail, f"{_flow(rest)}{_block(credits)}"),
-        foot,
+        _frame(rail, _flow(rest)),
     ])
-    return [_page(page, draft=draft)]
+    return _paginate([(page, False)], chip=chip, date=date, draft=draft,
+                     credit=_credits(lesson, piece, credits))
 
 
 SKELETONS = {

@@ -290,12 +290,21 @@ class SheetTestCase(unittest.TestCase):
 class NothingIsDropped(SheetTestCase):
     """Every approved block reaches the page, in every skeleton."""
 
+    # The one heading that is not printed. design_standards/CLAUDE.md,
+    # "Footers": the credit line appears "once per document, in 8.5px
+    # sentence case under the running line" — no label is named for it,
+    # and "Credits" is a handle in the source rather than something a
+    # reader needs. The text under it still prints; see the footer tests.
+    UNPRINTED_HEADINGS = {"credits"}
+
     def test_every_block_of_every_piece_is_on_its_sheet(self):
         for piece in self.lesson.pieces:
             with self.subTest(piece=piece.id):
                 html = self.render(piece.type)
                 body = text_of(html)
                 for section in piece.sections:
+                    if section.heading.strip().lower() in self.UNPRINTED_HEADINGS:
+                        continue
                     self.assertIn(section.heading, body,
                                   f"{piece.id}: the heading is missing")
                     for kind, block in blocks(section.body):
@@ -372,24 +381,42 @@ class NothingIsInvented(SheetTestCase):
 class NothingIsRemembered(unittest.TestCase):
     """The design facts live in design_standards/ and are read from there."""
 
-    SOURCE = (ROOT / "tools" / "stpaul" / "render" / "sheet.py").read_text(
-        encoding="utf-8")
+    # The CSS this module owns, as opposed to the tokens it copies in.
+    # Checked instead of the source text: the module's own prose quotes
+    # the spec, and a test that reads prose fails on a docstring.
+    OWN_CSS = sheet.PRINT_CSS
 
-    def test_the_renderer_names_no_palette_colour(self):
-        hexes = set(re.findall(r"#[0-9a-fA-F]{6}\b", self.SOURCE))
+    def test_the_renderer_declares_no_colour_of_its_own(self):
+        hexes = set(re.findall(r"#[0-9a-fA-F]{3,8}", self.OWN_CSS))
         self.assertEqual(
-            hexes, {sheet.SCREEN_BACKDROP},
-            "A colour is written into the renderer. Core Standards section 5: "
-            "'If a design fact is needed, it is read from there, not "
-            "remembered.' Use a token from design_standards/tokens/colors.css.")
+            hexes, set(),
+            "A colour is written into the renderer's stylesheet. Core "
+            "Standards section 5: 'If a design fact is needed, it is read "
+            "from there, not remembered.' Use a token from "
+            "design_standards/tokens/colors.css.")
 
-    def test_the_renderer_names_no_typeface(self):
+    def test_the_renderer_declares_no_typeface_of_its_own(self):
         for family in ("Instrument Serif", "Source Serif", "Montserrat",
                        "Lora", "Georgia", "Helvetica", "Times"):
             self.assertNotIn(
-                f'"{family}', self.SOURCE,
-                f"{family} is named in the renderer. The three families are "
-                f"declared in design_standards/tokens/typography.css.")
+                family, self.OWN_CSS,
+                f"{family} is named in the renderer's stylesheet. The three "
+                f"families are declared in "
+                f"design_standards/tokens/typography.css.")
+
+    def test_no_sheet_carries_a_typeface_inline(self):
+        tmp = Path(tempfile.mkdtemp(prefix="stpaul-faces-"))
+        try:
+            content = write_fixture(tmp, FILLED_LESSON)
+            lesson = load_lesson(SLUG, content_dir=content)
+            for piece in lesson.pieces:
+                html = sheet.render(lesson, piece, "d" * 64,
+                                    tmp / "out" / sheet.filename(piece))
+                self.assertNotIn("font-family",
+                                 html.read_text(encoding="utf-8"),
+                                 f"{piece.id} sets type in its own markup")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
 
     def test_the_stylesheet_carries_the_design_systems_tokens(self):
         css = sheet.stylesheet()
@@ -470,6 +497,61 @@ class TheSkeletons(SheetTestCase):
 
     def test_the_nursery_chip_carries_its_age_range(self):
         self.assertIn(sheet.NURSERY_CHIP, text_of(self.render("nursery_notes")))
+
+
+class TheFooter(SheetTestCase):
+    """design_standards/CLAUDE.md, "Footers".
+
+    "piece and date left, 'Page n of m' right. The ESV / hymn-license /
+    authorship credit line appears once per document, in 8.5px sentence
+    case under the running line."
+
+    All three were wrong: the date was on the right where the page
+    number belongs, there was no page number at all, and the credit was
+    a body block at reading size in the middle of the sheet.
+    """
+
+    def footers(self, piece_type: str) -> list[str]:
+        html = self.render(piece_type)
+        return re.findall(r"<footer class=\"sheet\">.*?</footer>", html, re.S)
+
+    def test_the_running_line_carries_the_piece_the_date_and_the_page(self):
+        feet = self.footers("teacher_guide")
+        self.assertEqual(len(feet), 3)
+        for i, foot in enumerate(feet, 1):
+            line = text_of(foot)
+            self.assertIn("Teacher's Guide", line)
+            self.assertIn("January 4, 2026", line)
+            self.assertIn(f"Page {i} of 3", line)
+
+    def test_the_credit_line_appears_once_per_document(self):
+        feet = self.footers("teacher_guide")
+        carrying = [f for f in feet if 'class="credit"' in f]
+        self.assertEqual(len(carrying), 1, "once per document, not once per page")
+        self.assertIs(carrying[0], feet[-1], "on the last page")
+
+    def test_the_credit_line_carries_both_sources(self):
+        """The publisher's notice and what the pastor approved on the sheet."""
+        last = self.footers("teacher_guide")[-1]
+        self.assertIn("Teacher notice.", last)     # lesson.yml
+        self.assertIn("A credit line.", last)      # the piece's Credits section
+
+    def test_the_credit_is_not_a_body_block(self):
+        html = self.render("teacher_guide")
+        body = html[:html.index('<footer class="sheet">')]
+        self.assertNotIn("A credit line.", body,
+                         "the credit belongs in the footer, at 8.5px, not in "
+                         "the middle of the sheet at reading size")
+
+    def test_a_single_page_piece_still_numbers_itself(self):
+        feet = self.footers("student_handout")
+        self.assertEqual(len(feet), 1)
+        self.assertIn("Page 1 of 1", text_of(feet[0]))
+
+    def test_the_student_sheet_carries_the_student_notice(self):
+        last = self.footers("student_handout")[-1]
+        self.assertIn("Student notice.", last)
+        self.assertNotIn("Teacher notice.", last)
 
 
 class TheTeacherGuidePages(SheetTestCase):
