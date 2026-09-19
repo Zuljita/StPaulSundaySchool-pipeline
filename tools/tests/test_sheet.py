@@ -107,10 +107,18 @@ order: 5
 
 # Primary Teacher Guide
 
+## Lesson Overview
+
+An invented sentence summarising the week.
+
 ## What You Need
 
 - One thing
 - Another thing
+
+## The Text
+
+Fakebook 1:1-4, printed in full on the student handout.
 
 ## For the Teacher
 
@@ -123,6 +131,22 @@ Supplied verbatim. Do not improvise this section.
 The Law. A first invented sentence about the law.
 
 The Gospel. A second invented sentence about the gospel.
+
+## Memory Work & Hymn
+
+An invented line about the memory work and the hymn.
+
+## What Children Ask
+
+"An invented question?" — an invented answer.
+
+## Catechism Connection
+
+An invented catechism gloss for the teacher.
+
+## Closing Prayer
+
+See Step 2 above.
 
 ## The Lesson
 
@@ -336,9 +360,13 @@ class NothingIsInvented(SheetTestCase):
 
     def test_an_absent_plate_leaves_the_panel_empty_rather_than_filled(self):
         """readme.md: 'an absent image leaves the panel empty.'"""
-        html = self.render("teacher_guide")
+        html = self.render("student_handout")
         self.assertIn('class="plate"', html)
-        self.assertNotIn("<img class=\"plate\"", html)
+        self.assertNotIn('<img class="plate"', html)
+
+    def test_only_the_student_rail_carries_the_plate(self):
+        """readme.md puts the artwork 'at the foot of the student rail'."""
+        self.assertNotIn('class="art"', self.render("teacher_guide"))
 
 
 class NothingIsRemembered(unittest.TestCase):
@@ -442,6 +470,55 @@ class TheSkeletons(SheetTestCase):
 
     def test_the_nursery_chip_carries_its_age_range(self):
         self.assertIn(sheet.NURSERY_CHIP, text_of(self.render("nursery_notes")))
+
+
+class TheTeacherGuidePages(SheetTestCase):
+    """Which block sits on which page.
+
+    design_standards/CLAUDE.md, "Structure per skeleton", is specific
+    about this and the one-line table in ui_kits/handouts/README.md is
+    not. The first version of this skeleton was built from the table and
+    put three blocks on the wrong page; nothing here noticed, because
+    nothing here looked. This looks.
+    """
+
+    def pages(self) -> list[str]:
+        html = self.render("teacher_guide")
+        parts = html.split('<section class="page')
+        return [text_of(p) for p in parts[1:]]
+
+    def test_page_one_carries_the_prep(self):
+        one = self.pages()[0]
+        self.assertIn("What You Need", one)
+        self.assertIn("For the Teacher", one)
+        self.assertIn("Law and Gospel", one,
+                      "the spec puts Law and Gospel in page 1's main column")
+        self.assertIn("Memory Work", one,
+                      "the spec puts Memory Work This Week on page 1")
+
+    def test_page_two_carries_the_gospel_and_the_questions(self):
+        # Matched on the body, not the heading: the guides currently spell
+        # the section three different ways and lint already reports that.
+        gloss = "An invented catechism gloss for the teacher"
+        pages = self.pages()
+        self.assertIn(gloss, pages[1],
+                      "the spec puts the Catechism on page 2, beside the questions")
+        self.assertNotIn(gloss, pages[0])
+        self.assertIn("An invented question?", pages[1])
+
+    def test_the_instruction_beside_the_passage_is_not_lost_to_it(self):
+        """The Text says how to read the passage as well as carrying it."""
+        self.assertIn("printed in full on the student handout", self.pages()[1])
+
+    def test_page_three_carries_the_lesson(self):
+        three = self.pages()[2]
+        self.assertIn("The Lesson", three)
+        self.assertNotIn("The Lesson", self.pages()[0])
+
+    def test_the_questions_and_the_catechism_sit_side_by_side(self):
+        html = self.render("teacher_guide")
+        page2 = html.split('<section class="page')[2]
+        self.assertIn('class="bands two"', page2)
 
 
 class TheText(SheetTestCase):

@@ -23,8 +23,11 @@ of the palette here, and there must not be one.
 
 What this module owns is assembly: which approved section goes in the
 rail and which in the substance column, on which of the sheet's fixed
-pages. That is structure, not design, and it follows the skeletons the
-design project documents in `ui_kits/handouts/README.md`.
+pages. That is structure, not design, and it follows `design_standards/
+CLAUDE.md`, "Structure per skeleton", which names the blocks page by
+page. The one-line table in `ui_kits/handouts/README.md` summarises the
+same thing and is not the same thing; building from it put three blocks
+of the teacher's guide on the wrong page.
 
 Three rules hold it honest.
 
@@ -50,7 +53,8 @@ import shutil
 from pathlib import Path
 
 from ..model import REPO_ROOT, Lesson, Piece, Section, _normalize_heading
-from ..scripture import VERSE_MARK, parse_exact_reference
+from ..scripture import (VERSE_MARK, is_excerpt, parse_exact_reference,
+                         words)
 from .blocks import blocks
 from .handoff import piece_heading
 
@@ -1065,9 +1069,37 @@ def _frame(rail: str, substance: str) -> str:
 # differ by name, never by layout.
 # ---------------------------------------------------------------------
 
+# The catechism section. Core Standards §4 locks the heading to "From the
+# Small Catechism" on every guide at every level, and rules.yml enforces
+# it; the guides currently carry "Catechism Connection" and "Catechism /
+# Confessions", which lint already reports. All three are matched here so
+# the section reaches its slot either way. Renaming it is the author's
+# fix, not this renderer's.
+CATECHISM = ("From the Small Catechism", "Catechism Connection",
+             "Catechism / Confessions")
+
+# design_standards/CLAUDE.md: "What Children Ask (or Discussion Guardrails
+# for middle and high school)". The middle school guide carries both, so
+# both are taken and stacked rather than one being chosen over the other.
+QUESTIONS = ("Discussion Guardrails", "What Children Ask")
+
+
 def _teacher_guide(lesson: Lesson, piece: Piece, pool: Pool, *,
                    draft: bool) -> list[str]:
-    """Three pages: rail and prep, Gospel and questions, the lesson outline."""
+    """Three pages, laid out as design_standards/CLAUDE.md lays them out.
+
+    "Structure per skeleton" is specific about which block sits on which
+    page, and this follows it rather than the one-line summary in
+    ui_kits/handouts/README.md, which is where an earlier version of this
+    function came from. That version put Law and Gospel on page 2, pulled
+    the Catechism forward to page 1, and set Memory Work in the rail;
+    all three belong elsewhere.
+
+    Two slots the spec names have no section in the content: "Time Today"
+    and, on most levels, "This Week in the Room". They are left empty.
+    The artwork panel is not here either: readme.md puts it "at the foot
+    of the student rail", and this is not a student piece.
+    """
     date, occasion, reference = _meta(lesson)
     season, season_var = _season(lesson)
     chip = _chip_text(lesson, piece)
@@ -1075,45 +1107,53 @@ def _teacher_guide(lesson: Lesson, piece: Piece, pool: Pool, *,
     running = f"{occasion} · {date}".strip(" ·")
 
     needs = pool.take("What You Need")
-    overview = pool.take("Lesson Overview")
+    in_the_room = pool.take("This Week in the Room", "Lesson Overview")
     teacher = pool.take("For the Teacher")
-    text = pool.take("The Text")
     law_gospel = pool.take("Law and Gospel in this Text")
-    asks = pool.take("What Children Ask")
-    catechism = pool.take("Catechism Connection", "From the Small Catechism")
-    memory = pool.take("Memory Work & Hymn", "Memory Work")
-    prayer = pool.take("Closing Prayer")
+    memory = pool.take("Memory Work This Week", "Memory Work & Hymn",
+                       "Memory Work")
+    hymn = pool.take_prefix("Hymn")
+    text = pool.take("The Text")
+    questions = [s for s in (pool.take(q) for q in QUESTIONS) if s]
+    catechism = pool.take(*CATECHISM)
     the_lesson = pool.take("The Lesson")
+    prayer = pool.take("Closing Prayer")
     credits = pool.take("Credits")
     rest = pool.rest()
 
-    rail = "".join([_block(needs), _block(memory), _block(catechism),
-                    _block(prayer), _rail_artwork(lesson)])
+    # Page 1 — sidebar: what a teacher reaches for. Main column: the prep.
+    rail = "".join([_block(needs), _reference_block(lesson), _block(in_the_room)])
     page1 = "".join([
         _masthead(chip=chip, title=_title(lesson, piece), date=date,
                   occasion=occasion, reference=reference,
                   season=season, season_var=season_var),
         _theme_line(_theme(lesson)),
-        _frame(rail, f"{_block(overview)}{_block(teacher)}"),
+        _frame(rail, "".join([_block(teacher), _pair_from(lesson, law_gospel),
+                              _block(memory), _block(hymn)])),
         foot,
     ])
 
-    gospel = _scripture(str(lesson.meta.get("gospel_text") or ""))
-    if gospel:
-        heading = _esc(text.heading) if text else "The Holy Gospel"
-        gospel_block = f"<div>{_section_label(heading)}{gospel}</div>"
+    # Page 2 — the Gospel in full, then the questions beside the Catechism.
+    gospel_block = _gospel_block(lesson, text)
+    asked = "".join(_block(s) for s in questions)
+    if asked and catechism:
+        band = f'<div class="bands two"><div>{asked}</div>{_block(catechism)}</div>'
     else:
-        gospel_block = _block(text)
-    body2 = "".join([gospel_block, _pair_from(lesson, law_gospel),
-                     _block(asks), _flow(rest)])
+        band = asked + _block(catechism)
+    body2 = gospel_block + band + _flow(rest)
     page2 = "".join([
         _running_header(chip, running),
         f'<div class="stack stack-lg">{body2}</div>',
         foot,
     ]) if body2 else ""
 
-    steps = _steps(the_lesson)
-    body3 = steps + _block(credits)
+    # Page 3 — The Lesson. The spec prints every prayer inline at the step
+    # that uses it; the closing prayer is set here as its own block
+    # instead, because moving approved text inside a step is a decision
+    # about where a teacher reads it and the guides disagree already. The
+    # primary guide's Closing Prayer reads "See Step 6 above", so on that
+    # level it is a pointer; on high school it is the prayer itself.
+    body3 = _steps(the_lesson) + _block(prayer) + _block(credits)
     page3 = "".join([
         _running_header(chip, running),
         f'<div class="stack stack-lg">{body3}</div>',
@@ -1126,6 +1166,60 @@ def _teacher_guide(lesson: Lesson, piece: Piece, pool: Pool, *,
     if page3:
         pages.append(_page(page3, lesson_padding=True, draft=draft))
     return pages
+
+
+# A block has to be this long before it can be mistaken for the passage.
+# `is_excerpt` answers "are these the publisher's words, in order", and a
+# short instruction can satisfy that by accident where a paragraph of the
+# Gospel cannot.
+_PASSAGE_MIN_WORDS = 20
+
+
+def _gospel_block(lesson: Lesson, text: Section | None) -> str:
+    """The Gospel in full, and whatever the section says around it.
+
+    The piece's "The Text" section holds two different things: a line
+    telling the teacher how to read it, and the passage. When
+    `lesson.yml` carries the publisher's text, the passage is set with
+    the design system's Scripture component, two columns with red verse
+    numbers. The instruction is not the passage and still has to print;
+    an earlier version of this kept the heading and threw the rest away.
+
+    Which blocks are the passage is answered by `scripture.is_excerpt`,
+    the same reading the rule engine uses to hold a quotation to the
+    text, rather than by a guess made here.
+    """
+    passage = str(lesson.meta.get("gospel_text") or "")
+    if not passage:
+        return _block(text)
+
+    heading = _esc(text.heading) if text else "The Holy Gospel"
+    around = []
+    if text is not None:
+        for kind, block in blocks(text.body):
+            if kind == "rule":
+                continue
+            if (len(words(block)) >= _PASSAGE_MIN_WORDS
+                    and is_excerpt(block, passage)):
+                continue          # the passage itself, set below
+            around.append(f"<p>{_inline(block)}</p>")
+    return (f"<div>{_section_label(heading)}{''.join(around)}"
+            f"{_scripture(passage)}</div>")
+
+
+def _reference_block(lesson: Lesson) -> str:
+    """"The Text" as the sidebar carries it: the reference, not the passage.
+
+    The passage itself is page 2, "the Gospel printed in full". The
+    sidebar line is what a teacher looks up, and it comes from
+    `lesson.yml` rather than from the piece, so the two cannot disagree.
+    """
+    ref = str(lesson.meta.get("gospel") or "").strip()
+    if not ref:
+        return ""
+    translation = str(lesson.meta.get("translation") or "").strip()
+    label = f"The Text ({translation})" if translation else "The Text"
+    return f"<div>{_section_label(_esc(label))}<p>{_esc(ref)}</p></div>"
 
 
 def _student_handout(lesson: Lesson, piece: Piece, pool: Pool, *,
