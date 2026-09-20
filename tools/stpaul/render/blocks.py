@@ -12,7 +12,7 @@ them agree; 5 of 12 pieces never reached the app and of the 7 that did,
 mistake in miniature: DOCX would set a line as a bullet and the site
 would set it as a paragraph, and no test would notice.
 
-So it lives here, once, and `docx_render` and `site` both import it.
+So it lives here, once, and `sheet` and `site` both import it.
 """
 
 from __future__ import annotations
@@ -20,8 +20,11 @@ from __future__ import annotations
 import re
 from typing import Iterator
 
-# §6 of the brand standard: no horizontal rules anywhere, including the
-# ones Markdown makes from "---". Every renderer drops these.
+# No horizontal rules anywhere, including the ones Markdown makes from
+# "---". The rule came from the brand standard Core Standards section 5
+# retired; the design system that replaced it draws structure with ruled
+# edges on real elements and has no free-standing rule either, so every
+# renderer still drops these.
 RULE = re.compile(r"-{3,}|\*{3,}|_{3,}")
 
 BULLET = re.compile(r"^[-*☐]\s+")

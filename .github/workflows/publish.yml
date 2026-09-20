@@ -21,12 +21,20 @@ name: publish
 #
 #   1. make_review    a new Sunday becomes visible to sign in and review
 #   2. build          only what verify() says is approved, right now
-#   3. publish_site   re-checks the hash and the approval before staging
-#   4. publish_r2     uploads what survived both
+#   3. fit_check      no sheet runs past the page box it will be clipped to
+#   4. print_pdf      the sheets become paper, in the design system's type
+#   5. publish_site   re-checks the hash and the approval before staging
+#   6. publish_r2     uploads what survived all of it
 #
 # Nothing in that chain can publish unapproved text. Step 2 refuses it,
-# and step 3 refuses it again against the content as it stands at publish
+# and step 5 refuses it again against the content as it stands at publish
 # time rather than as it stood at build time.
+#
+# Steps 3 and 4 need a browser, which is why they are not part of build.py:
+# that pass is pure Python and a function of the approved bytes alone. A
+# page box that clips and a font that silently falls back are both things
+# only a rendering engine can tell you about, and both fail the run rather
+# than reaching a printer.
 
 on:
   # The safety net, and only that. The dispatch below already publishes
@@ -111,7 +119,10 @@ jobs:
           node-version: "20"
 
       - name: Install
-        run: pip install --quiet pyyaml python-docx reportlab pypdf
+        # python-docx and reportlab went with the DOCX and PDF renderers.
+        # The sheets are HTML and the PDFs come off the browser the runner
+        # already has.
+        run: pip install --quiet pyyaml pypdf
 
       - name: Tests
         # Before touching anything the congregation will read. These hold
@@ -154,6 +165,29 @@ jobs:
         # instead of failing on them. Most of a year is waiting at any
         # moment; that is the normal state, not an error.
         run: python tools/build.py --all --approved-only
+
+      - name: Check every sheet fits its page
+        env:
+          STPAUL_DATA: ${{ runner.temp }}/data
+        # design_standards/readme.md: "the page box clips - a sheet that
+        # runs long loses its footer silently." This is the design project's
+        # own fit-check procedure, run by a machine. A sheet that overflows
+        # is more content than the paper holds, and what comes off it is the
+        # author's decision, so this reports and stops rather than guessing.
+        run: |
+          shopt -s nullglob
+          for d in "${RUNNER_TEMP}"/data/dist/*/handouts; do
+            python tools/fit_check.py "$d"
+          done
+
+      - name: Print the sheets
+        env:
+          STPAUL_DATA: ${{ runner.temp }}/data
+        run: |
+          shopt -s nullglob
+          for d in "${RUNNER_TEMP}"/data/dist/*/handouts; do
+            python tools/print_pdf.py "$d"
+          done
 
       - name: Stage the site
         id: stage

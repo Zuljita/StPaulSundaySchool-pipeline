@@ -44,7 +44,7 @@ APPROVAL_WORKER = ROOT / "services" / "approval" / "worker.js"
 from stpaul import approval, hashing
 from stpaul.model import load_lesson
 from stpaul.render import blocks as blocks_mod
-from stpaul.render import docx_render, handoff, package, pdf_render, site
+from stpaul.render import handoff, package, sheet, site
 
 SLUG = "2026-01-04-test"
 
@@ -350,15 +350,14 @@ class OneBlockParserTestCase(unittest.TestCase):
     """Every renderer must read a body the same way.
 
     This is the drift the whole project is about, in miniature. If the
-    site decided a line was a paragraph while the DOCX decided it was a
-    bullet, both would be self-consistent, both would look fine, and the
-    handout in a teacher's hand would differ from the page on their phone
-    with nothing to say so.
+    site decided a line was a paragraph while the printed sheet decided it
+    was a bullet, both would be self-consistent, both would look fine, and
+    the handout in a teacher's hand would differ from the page on their
+    phone with nothing to say so.
     """
 
     def test_all_renderers_share_one_function(self):
-        self.assertIs(docx_render.blocks, blocks_mod.blocks)
-        self.assertIs(pdf_render.blocks, blocks_mod.blocks)
+        self.assertIs(sheet.blocks, blocks_mod.blocks)
         self.assertIs(site.blocks, blocks_mod.blocks)
 
     def test_the_parser_still_classifies_what_the_standard_names(self):
@@ -814,46 +813,40 @@ class ReproducibleOutputTestCase(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def test_the_docx_is_byte_identical_across_renders(self):
-        a = docx_render.render(self.lesson, self.piece, self.digest, self.tmp / "a.docx")
-        b = docx_render.render(self.lesson, self.piece, self.digest, self.tmp / "b.docx")
+    def test_the_sheet_is_byte_identical_across_renders(self):
+        a = sheet.render(self.lesson, self.piece, self.digest, self.tmp / "a.html")
+        b = sheet.render(self.lesson, self.piece, self.digest, self.tmp / "b.html")
         self.assertEqual(a.read_bytes(), b.read_bytes())
 
-    def test_the_pdf_is_byte_identical_across_renders(self):
-        a = pdf_render.render(self.lesson, self.piece, self.digest, self.tmp / "a.pdf")
-        b = pdf_render.render(self.lesson, self.piece, self.digest, self.tmp / "b.pdf")
-        self.assertEqual(a.read_bytes(), b.read_bytes())
+    def test_the_stylesheet_is_byte_identical_across_builds(self):
+        """It is assembled from files on disk, so it must not vary either."""
+        self.assertEqual(sheet.stylesheet(), sheet.stylesheet())
 
-    def test_the_docx_carries_no_build_time(self):
-        """The bug directly: every entry in the package was clock-stamped."""
-        out = docx_render.render(self.lesson, self.piece, self.digest,
-                                 self.tmp / "c.docx")
-        want = package.date_time_for(self.lesson.date)
-        with zipfile.ZipFile(out) as z:
-            stamps = {i.date_time for i in z.infolist()}
-            systems = {i.create_system for i in z.infolist()}
-        self.assertEqual(stamps, {want},
-                         "a .docx entry is timestamped from the clock, not the lesson")
-        self.assertEqual(systems, {package.CREATE_SYSTEM},
-                         "the .docx records the OS that built it, so Windows and "
-                         "Linux builds of the same lesson would differ")
+    def test_the_sheet_carries_no_build_time(self):
+        """The lesson's date belongs on the sheet. Today's does not."""
+        out = sheet.render(self.lesson, self.piece, self.digest, self.tmp / "c.html")
+        text = out.read_text(encoding="utf-8")
+        today = _dt.datetime.now(_dt.timezone.utc).date()
+        self.assertNotEqual(today, self.lesson.date,
+                            "pick a fixture Sunday that is not today")
+        self.assertNotIn(today.isoformat(), text,
+                         "the sheet embeds the build date, so a rebuild cannot "
+                         "be compared against what was printed")
 
-    def test_the_pdf_carries_no_build_time(self):
-        out = pdf_render.render(self.lesson, self.piece, self.digest, self.tmp / "d.pdf")
-        today = _dt.datetime.now(_dt.timezone.utc).strftime("D:%Y%m%d")
-        self.assertNotIn(today.encode(), out.read_bytes(),
-                         "the PDF embeds today's date, so a rebuild cannot be "
-                         "compared against the file that was printed")
+    def test_the_sheet_carries_the_source_hash(self):
+        """Print, site and app export all say which bytes they came from."""
+        out = sheet.render(self.lesson, self.piece, self.digest, self.tmp / "h.html")
+        self.assertIn(self.digest, out.read_text(encoding="utf-8"))
 
     def test_the_weekly_package_is_byte_identical_across_builds(self):
         """The archive inherits whatever its contents do."""
         def build_package(tag: str) -> bytes:
             out = self.tmp / tag
             (out / "handouts").mkdir(parents=True, exist_ok=True)
+            sheet.write_assets(out / "handouts", self.lesson)
             for piece in self.lesson.pieces:
-                stem = f"{piece.order:02d}-{piece.id}"
-                docx_render.render(self.lesson, piece, self.digest,
-                                   out / "handouts" / f"{stem}.docx")
+                sheet.render(self.lesson, piece, self.digest,
+                             out / "handouts" / sheet.filename(piece))
             handoff.write(self.lesson, out, self.digest)
             z = package.write(out, SLUG,
                               date_time=package.date_time_for(self.lesson.date))
@@ -864,13 +857,17 @@ class ReproducibleOutputTestCase(unittest.TestCase):
     def test_the_package_holds_the_handouts_and_the_handoff(self):
         out = self.tmp / "pkg"
         (out / "handouts").mkdir(parents=True, exist_ok=True)
-        docx_render.render(self.lesson, self.piece, self.digest,
-                           out / "handouts" / "01-family-take-home.docx")
+        sheet.write_assets(out / "handouts", self.lesson)
+        sheet.render(self.lesson, self.piece, self.digest,
+                     out / "handouts" / "01-family-take-home.html")
         handoff.write(self.lesson, out, self.digest)
         z = package.write(out, SLUG)
         with zipfile.ZipFile(z) as zf:
             names = set(zf.namelist())
-        self.assertIn("handouts/01-family-take-home.docx", names)
+        self.assertIn("handouts/01-family-take-home.html", names)
+        # The faces travel with the sheets, or a volunteer who unzips this
+        # on a machine without them prints the week in Georgia.
+        self.assertTrue(any(n.endswith(".woff2") for n in names))
         self.assertTrue(any(n.startswith("handoff/") for n in names))
         # Not a copy of the web site: this is what someone prints from.
         self.assertFalse(any(n.startswith("site/") for n in names))
