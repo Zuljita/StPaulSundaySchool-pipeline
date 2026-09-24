@@ -25,7 +25,9 @@ FIXTURE_STANDARDS = Path(__file__).resolve().parent / "data" / "standards"
 from stpaul import approval, hashing
 from stpaul.model import load_lesson, load_rules
 from stpaul.rules import (ERROR, check_benediction, check_hymn_copyright,
-                          check_lesson, check_teacher_guide_ladder,
+                          check_lesson, check_level_labels, check_manifest,
+                          check_required_sections,
+                          check_scripture_copyright, check_teacher_guide_ladder,
                           summarize)
 
 LESSON_YML = """\
@@ -481,6 +483,24 @@ class BenedictionTestCase(unittest.TestCase):
         self.assertEqual(len(hits), 1)
         self.assertIn("missing", hits[0].message)
 
+    def test_earlier_wording_governs_earlier_sundays(self):
+        """"With us all" from Trinity 17; "with you all" before it."""
+        rules = {"benediction": {
+            "applies_to": ["teacher_guide"],
+            "printed_marker": "communion of the Holy Spirit be with us all",
+            "earlier": [{"printed_marker": "communion of the Holy Spirit be with you all",
+                         "until_date": "2026-09-20"}]}}
+        self.piece.write_text(self.guide(self.FULL), encoding="utf-8")
+        lesson = load_lesson(SLUG, content_dir=self.content)
+        self.assertEqual(check_benediction(rules, lesson), [])  # dated 2026-01-04
+        lesson.meta["date"] = "2026-09-27"
+        self.assertEqual(len(check_benediction(rules, lesson)), 1)
+        self.piece.write_text(self.guide(self.FULL.replace("with you all", "with us all")),
+                              encoding="utf-8")
+        lesson = load_lesson(SLUG, content_dir=self.content)
+        lesson.meta["date"] = "2026-09-27"
+        self.assertEqual(check_benediction(rules, lesson), [])
+
 
 class LadderTestCase(unittest.TestCase):
     """Pre-K has one rung. High School has five.
@@ -609,6 +629,131 @@ class HymnCopyrightTestCase(unittest.TestCase):
         """The case most likely to look fine at a glance."""
         partial = self.STANZA + "\n\nText by A. Author."
         self.assertEqual(self.hits(PIECE.replace("A stanza.", partial)), 1)
+
+
+class DatedEntriesTestCase(unittest.TestCase):
+    """A piece or a label added going forward does not reach backward.
+
+    Nursery 2 joined the manifest at Trinity 17. Trinity 16 was approved
+    with twelve pieces and must not start failing for want of a thirteenth.
+    """
+
+    RULES = {
+        "manifest": {"pieces": [
+            {"id": "family-take-home", "type": "family_take_home", "level": "all", "order": 1},
+            {"id": "nursery2-notes", "type": "teacher_guide", "level": "nursery_2",
+             "order": 13, "from_date": "2026-09-27"},
+        ]},
+        "level_labels": {
+            "canonical": {"nursery": "Nursery 1"},
+            "earlier": [{"level": "nursery", "label": "Nursery", "until_date": "2026-09-20"}],
+        },
+    }
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="stpaul-dated-"))
+        self.content = self.tmp / "content"
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def lesson(self, on, pieces):
+        slug = f"{on}-test"
+        d = self.content / slug / "pieces"
+        d.mkdir(parents=True)
+        (self.content / slug / "lesson.yml").write_text(
+            LESSON_YML.replace("2026-01-04", on), encoding="utf-8")
+        for name, text in pieces.items():
+            (d / name).write_text(text, encoding="utf-8")
+        return load_lesson(slug, content_dir=self.content)
+
+    def nursery(self, label):
+        return ("---\npiece: nursery-notes\ntype: nursery_notes\nlevel: nursery\n"
+                f"order: 2\n---\n\n# Title\n\n{label} · Birth to 2\n")
+
+    def test_piece_not_required_before_its_date(self):
+        lesson = self.lesson("2026-09-20", {"01-f.md": PIECE})
+        self.assertEqual([f.rule for f in check_manifest(self.RULES, lesson)], [])
+
+    def test_piece_required_from_its_date(self):
+        lesson = self.lesson("2026-09-27", {"01-f.md": PIECE})
+        self.assertEqual([f.rule for f in check_manifest(self.RULES, lesson)],
+                         ["missing-piece"])
+
+    def test_earlier_label_governs_earlier_sundays(self):
+        lesson = self.lesson("2026-09-20", {"02-n.md": self.nursery("Nursery")})
+        self.assertEqual(check_level_labels(self.RULES, lesson), [])
+
+    def test_section_required_only_from_its_date(self):
+        rules = {"required_sections": {"nursery_notes": [
+            "Closing Prayer",
+            {"name": "The Story to Tell", "from_date": "2026-09-27"}]}}
+        text = self.nursery("Nursery") + "\n## Closing Prayer\n\nA prayer.\n"
+        lesson = self.lesson("2026-09-20", {"02-n.md": text})
+        self.assertEqual(check_required_sections(rules, lesson), [])
+        lesson = self.lesson("2026-09-27", {"02-n.md": text})
+        self.assertEqual([f.rule for f in check_required_sections(rules, lesson)],
+                         ["missing-section"])
+
+    def test_current_label_governs_later_sundays(self):
+        lesson = self.lesson("2026-09-27", {"02-n.md": self.nursery("Nursery")})
+        self.assertEqual(len(check_level_labels(self.RULES, lesson)), 1)
+        lesson = self.lesson("2026-10-04", {"02-n.md": self.nursery("Nursery 1")})
+        self.assertEqual(check_level_labels(self.RULES, lesson), [])
+
+
+class ScriptureShareTestCase(unittest.TestCase):
+    """The work is the whole Sunday, and a passage counts once."""
+
+    RULES = {"scripture_copyright": {"translations": {"ESV": {
+        "holder": "Crossway", "max_share_of_work": 0.25,
+        "notice_pattern": "English Standard Version", "short_mark": "(ESV)"}}}}
+
+    GOSPEL = " ".join(f"word{i}" for i in range(40))
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="stpaul-share-"))
+        self.content = self.tmp / "content"
+        (self.content / SLUG / "pieces").mkdir(parents=True)
+        # The memory verse is inside the pericope, Luke 1:1-4.
+        (self.content / SLUG / "lesson.yml").write_text(
+            LESSON_YML
+            + f'gospel_text: "1 {self.GOSPEL}"\n'
+            + 'memory_verses:\n'
+            + '  pre_k:\n'
+            + '    - reference: "Luke 1:2"\n'
+            + '      text: "word1 word2"\n',
+            encoding="utf-8")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def write(self, n, prose_words):
+        prose = " ".join("prose" for _ in range(prose_words))
+        text = (f"---\npiece: p{n}\ntype: student_handout\nlevel: primary\norder: {n}\n---\n\n"
+                f"# T\n\n## The Text\n\n{self.GOSPEL} (ESV)\n\n## Notes\n\n{prose}\n")
+        (self.content / SLUG / "pieces" / f"{n:02d}.md").write_text(text, encoding="utf-8")
+
+    def shares(self):
+        lesson = load_lesson(SLUG, content_dir=self.content)
+        return [f for f in check_scripture_copyright(self.RULES, lesson)
+                if f.rule == "scripture-share-of-work"]
+
+    def test_one_piece_heavy_in_scripture_is_reported(self):
+        self.write(1, 20)
+        self.assertEqual(len(self.shares()), 1)
+
+    def test_repeating_the_gospel_does_not_count_it_again(self):
+        """Eight copies of the Gospel are one Gospel against eight pieces."""
+        for n in range(1, 9):
+            self.write(n, 20)
+        self.assertEqual(self.shares(), [])
+
+    def test_a_memory_verse_inside_the_pericope_is_not_counted_twice(self):
+        self.write(1, 20)
+        hits = self.shares()
+        self.assertEqual(len(hits), 1)
+        self.assertIn("(40 of", hits[0].message)
 
 
 if __name__ == "__main__":

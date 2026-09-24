@@ -192,6 +192,12 @@ def check_required_sections(rules: dict, lesson: Lesson) -> list[Finding]:
         if not required:
             continue
         for name in required:
+            # A section added going forward is written with a date, so a
+            # Sunday approved before it existed is not reported for it.
+            if isinstance(name, dict):
+                if not _in_force(name, lesson.date):
+                    continue
+                name = name["name"]
             if _exempt(rules, piece.level, piece.type, name):
                 continue
             section = piece.section(name)
@@ -223,9 +229,25 @@ def check_required_sections(rules: dict, lesson: Lesson) -> list[Finding]:
     return out
 
 
+def _in_force(entry: dict, on: date) -> bool:
+    """Whether a dated rules.yml entry applies to a Sunday on this date.
+
+    `from_date` and `until_date` are inclusive. An entry with neither is
+    always in force. This is how a piece or a label is added going forward
+    without reaching back into a Sunday that was approved before it
+    existed.
+    """
+    lo, hi = entry.get("from_date"), entry.get("until_date")
+    if lo and on < date.fromisoformat(str(lo)):
+        return False
+    if hi and on > date.fromisoformat(str(hi)):
+        return False
+    return True
+
+
 def check_manifest(rules: dict, lesson: Lesson) -> list[Finding]:
     spec = rules.get("manifest") or {}
-    expected = {p["id"]: p for p in spec.get("pieces", [])}
+    expected = {p["id"]: p for p in spec.get("pieces", []) if _in_force(p, lesson.date)}
     present = {p.id for p in lesson.pieces}
     out = []
     for pid in expected:
@@ -233,13 +255,13 @@ def check_manifest(rules: dict, lesson: Lesson) -> list[Finding]:
             out.append(Finding(
                 severity=spec.get("severity", ERROR), rule="missing-piece",
                 message=f'The Sunday is missing piece "{pid}". '
-                        f"All twelve pieces are required before a Sunday can be built.",
+                        f"Every piece in the manifest is required before a Sunday can be built.",
                 source=spec.get("source", ""),
             ))
     for pid in sorted(present - set(expected)):
         out.append(Finding(
             severity=WARNING, rule="unexpected-piece",
-            message=f'Piece "{pid}" is not in the twelve-piece manifest.',
+            message=f'Piece "{pid}" is not in the manifest for this date.',
             source=spec.get("source", ""),
         ))
     # Declared type/level must match the manifest, or the renderers and
@@ -352,7 +374,13 @@ def check_lords_prayer(rules: dict, lesson: Lesson) -> list[Finding]:
 def check_level_labels(rules: dict, lesson: Lesson) -> list[Finding]:
     """Level labels are printed text and must appear exactly as specified."""
     spec = rules.get("level_labels") or {}
-    canonical = spec.get("canonical", {})
+    canonical = dict(spec.get("canonical", {}))
+    # A label that has since changed still governs the Sundays printed
+    # under it, so an approved piece is not reported against a label that
+    # did not exist yet.
+    for old in spec.get("earlier") or []:
+        if _in_force(old, lesson.date):
+            canonical[old["level"]] = old["label"]
     out = []
     for piece in lesson.pieces:
         want = canonical.get(piece.level)
@@ -454,23 +482,59 @@ def check_scripture_copyright(rules: dict, lesson: Lesson) -> list[Finding]:
                 source=spec.get("source", ""), piece=piece.path.name,
             ))
 
-        # Crossway's share-of-work test. Advisory: the denominator here is
-        # characters of source, which is close to but not the same as what
-        # a publisher would measure on the printed page.
-        limit = cfg.get("max_share_of_work")
-        sec = piece.section("The Text")
-        if limit and sec and body:
-            share = len(sec.body) / len(body)
-            if share > limit:
-                out.append(Finding(
-                    severity=WARNING, rule="scripture-share-of-work",
-                    message=f"Scripture is roughly {share:.0%} of this piece; "
-                            f"{cfg.get('holder','the publisher')} sets the threshold at "
-                            f"{limit:.0%} of the work quoting it. Worth confirming "
-                            f"before this goes out at scale.",
-                    source=spec.get("source", ""), piece=piece.path.name,
-                ))
+    out.extend(_scripture_share_of_work(cfg, spec, lesson))
     return out
+
+
+def _scripture_share_of_work(cfg: dict, spec: dict, lesson: Lesson) -> list[Finding]:
+    """Crossway's share-of-work test, measured the way the work is printed.
+
+    The work is the Sunday: every piece, handed off and printed together.
+    The numerator is the Scripture that Sunday prints, each passage
+    counted once however many pieces repeat it. The Gospel printed on
+    eight pieces is still eleven verses of the ESV, and a memory verse
+    that falls inside the pericope is already counted with it.
+
+    The Scripture is what lesson.yml declares, since the Sunday prints
+    nothing else. Every declared passage is counted whole, even one a
+    piece only trims to a phrase or sends students to look up, so the
+    figure errs high. Where nothing has been fetched yet, the distinct
+    "The Text" sections stand in for it. Words, not characters, on both
+    sides, since a publisher counts what is read.
+
+    Advisory. A publisher measuring the printed page may count otherwise.
+    """
+    limit = cfg.get("max_share_of_work")
+    if not limit or not lesson.pieces:
+        return []
+    total = sum(len(words(p.body)) for p in lesson.pieces)
+    if not total:
+        return []
+
+    fetched = [p for p in lesson_passages(lesson.meta) if p.text]
+    texts: list[str] = []
+    for p in fetched:
+        inside = p.ref and any(q is not p and q.ref and q.ref != p.ref and q.ref.covers(p.ref)
+                               for q in fetched)
+        if not inside:
+            texts.append(p.text)
+    if not texts:
+        texts = [sec.body for sec in (pc.section("The Text") for pc in lesson.pieces) if sec]
+    distinct = {" ".join(words(t)) for t in texts} - {""}
+    scripture = sum(len(t.split()) for t in distinct)
+
+    share = scripture / total
+    if share <= limit:
+        return []
+    return [Finding(
+        severity=WARNING, rule="scripture-share-of-work",
+        message=f"Scripture is roughly {share:.0%} of this Sunday's pieces taken "
+                f"together, counting each passage once ({scripture} of {total} "
+                f"words); {cfg.get('holder', 'the publisher')} sets the threshold "
+                f"at {limit:.0%} of the work quoting it. Worth confirming before "
+                f"this goes out at scale.",
+        source=spec.get("source", ""),
+    )]
 
 
 def check_hymn_copyright(rules: dict, lesson: Lesson) -> list[Finding]:
@@ -518,7 +582,13 @@ def check_benediction(rules: dict, lesson: Lesson) -> list[Finding]:
     spec = rules.get("benediction") or {}
     if not spec:
         return []
-    marker = (spec.get("printed_marker") or "").lower()
+    marker = spec.get("printed_marker") or ""
+    # The wording has changed once, and a Sunday printed before the change
+    # is held to the wording it was approved under.
+    for old in spec.get("earlier") or []:
+        if _in_force(old, lesson.date):
+            marker = old.get("printed_marker") or marker
+    marker = marker.lower()
     applies = set(spec.get("applies_to") or [])
     out = []
     for piece in lesson.pieces:
