@@ -192,6 +192,12 @@ def check_required_sections(rules: dict, lesson: Lesson) -> list[Finding]:
         if not required:
             continue
         for name in required:
+            # A section added going forward is written with a date, so a
+            # Sunday approved before it existed is not reported for it.
+            if isinstance(name, dict):
+                if not _in_force(name, lesson.date):
+                    continue
+                name = name["name"]
             if _exempt(rules, piece.level, piece.type, name):
                 continue
             section = piece.section(name)

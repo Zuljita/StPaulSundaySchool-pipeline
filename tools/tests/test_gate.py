@@ -26,6 +26,7 @@ from stpaul import approval, hashing
 from stpaul.model import load_lesson, load_rules
 from stpaul.rules import (ERROR, check_benediction, check_hymn_copyright,
                           check_lesson, check_level_labels, check_manifest,
+                          check_required_sections,
                           check_scripture_copyright, check_teacher_guide_ladder,
                           summarize)
 
@@ -682,6 +683,17 @@ class DatedEntriesTestCase(unittest.TestCase):
     def test_earlier_label_governs_earlier_sundays(self):
         lesson = self.lesson("2026-09-20", {"02-n.md": self.nursery("Nursery")})
         self.assertEqual(check_level_labels(self.RULES, lesson), [])
+
+    def test_section_required_only_from_its_date(self):
+        rules = {"required_sections": {"nursery_notes": [
+            "Closing Prayer",
+            {"name": "The Story to Tell", "from_date": "2026-09-27"}]}}
+        text = self.nursery("Nursery") + "\n## Closing Prayer\n\nA prayer.\n"
+        lesson = self.lesson("2026-09-20", {"02-n.md": text})
+        self.assertEqual(check_required_sections(rules, lesson), [])
+        lesson = self.lesson("2026-09-27", {"02-n.md": text})
+        self.assertEqual([f.rule for f in check_required_sections(rules, lesson)],
+                         ["missing-section"])
 
     def test_current_label_governs_later_sundays(self):
         lesson = self.lesson("2026-09-27", {"02-n.md": self.nursery("Nursery")})
