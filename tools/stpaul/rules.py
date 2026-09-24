@@ -576,7 +576,13 @@ def check_benediction(rules: dict, lesson: Lesson) -> list[Finding]:
     spec = rules.get("benediction") or {}
     if not spec:
         return []
-    marker = (spec.get("printed_marker") or "").lower()
+    marker = spec.get("printed_marker") or ""
+    # The wording has changed once, and a Sunday printed before the change
+    # is held to the wording it was approved under.
+    for old in spec.get("earlier") or []:
+        if _in_force(old, lesson.date):
+            marker = old.get("printed_marker") or marker
+    marker = marker.lower()
     applies = set(spec.get("applies_to") or [])
     out = []
     for piece in lesson.pieces:

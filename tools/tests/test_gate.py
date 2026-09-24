@@ -482,6 +482,24 @@ class BenedictionTestCase(unittest.TestCase):
         self.assertEqual(len(hits), 1)
         self.assertIn("missing", hits[0].message)
 
+    def test_earlier_wording_governs_earlier_sundays(self):
+        """"With us all" from Trinity 17; "with you all" before it."""
+        rules = {"benediction": {
+            "applies_to": ["teacher_guide"],
+            "printed_marker": "communion of the Holy Spirit be with us all",
+            "earlier": [{"printed_marker": "communion of the Holy Spirit be with you all",
+                         "until_date": "2026-09-20"}]}}
+        self.piece.write_text(self.guide(self.FULL), encoding="utf-8")
+        lesson = load_lesson(SLUG, content_dir=self.content)
+        self.assertEqual(check_benediction(rules, lesson), [])  # dated 2026-01-04
+        lesson.meta["date"] = "2026-09-27"
+        self.assertEqual(len(check_benediction(rules, lesson)), 1)
+        self.piece.write_text(self.guide(self.FULL.replace("with you all", "with us all")),
+                              encoding="utf-8")
+        lesson = load_lesson(SLUG, content_dir=self.content)
+        lesson.meta["date"] = "2026-09-27"
+        self.assertEqual(check_benediction(rules, lesson), [])
+
 
 class LadderTestCase(unittest.TestCase):
     """Pre-K has one rung. High School has five.
