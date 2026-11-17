@@ -18,7 +18,10 @@ clock-dependent output. Two builds of the same approved bytes produce the
 same files. That property is the only reason the printed handouts and the
 app can be trusted to say the same thing.
 
-`build.py` is also pure Python, and stays that way. Turning a sheet into
+`build.py` is also pure Python, and stays that way. `paginate.py` lays out
+whole blocks on continuation pages without changing approved text, type,
+or page geometry. An indivisible block taller than a sheet still fails.
+Turning a sheet into
 paper takes a browser, so `fit_check.py` and `print_pdf.py` are separate
 steps that publish.yml runs over what `build.py` wrote. Both refuse to run
 off a runner without `--local`.
@@ -70,7 +73,7 @@ So:
   the pastor, and it does not go in an email for the pastor to pass on.
 - **Tools that belong to a workflow refuse to run anywhere else.**
   `fetch_scripture.py`, `make_review.py`, `publish_site.py`, `publish_r2.py`,
-  `fit_check.py`, `print_pdf.py` and `approve.py` stop and say what does
+`paginate.py`, `fit_check.py`, `print_pdf.py` and `approve.py` stop and say what does
   their job. `--local` exists so
   the maintainer can work on those tools. Do not pass it to get something
   done, and do not tell anyone else to.

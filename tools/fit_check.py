@@ -57,6 +57,7 @@ const sheets = %s;
 const results = [];
 function measure(doc, name) {
   const out = [];
+  if (!doc.querySelector('.page')) return [{sheet: name, page: 0, error: 'No printable pages found.'}];
   doc.querySelectorAll('.page').forEach((page, i) => {
     const over = page.scrollHeight - page.clientHeight;
     const inner = page.querySelector('.inner');
@@ -79,9 +80,10 @@ function measure(doc, name) {
   for (const name of sheets) {
     const f = document.createElement('iframe');
     f.style.cssText = 'width:816px;height:1056px;border:0;position:absolute;left:-9999px';
+    const loaded = new Promise(r => { f.onload = r; f.onerror = r; });
     f.src = name;
     document.body.appendChild(f);
-    await new Promise(r => { f.onload = r; f.onerror = r; });
+    await loaded;
     try {
       if (f.contentDocument.fonts) { await f.contentDocument.fonts.ready; }
       results.push(...measure(f.contentDocument, name));
@@ -116,7 +118,10 @@ def measure(handouts: Path) -> list[dict]:
         raise browser.BrowserError(
             "The fit probe returned nothing measurable. The browser said:\n"
             + (proc.stderr or "").strip()[:800])
-    return json.loads(html.unescape(m.group(1)))
+    rows = json.loads(html.unescape(m.group(1)))
+    if {r.get('sheet') for r in rows} != set(sheets):
+        raise browser.BrowserError('The fit probe did not measure every sheet.')
+    return rows
 
 
 def main() -> int:
@@ -162,9 +167,8 @@ def main() -> int:
         for b in bad:
             print(f"          {b}", file=sys.stderr)
         print(file=sys.stderr)
-        print("          Nothing here is a code fix. A sheet that runs long is a "
-              "sheet with more on it than fits, and what comes off is the "
-              "author's call, not the pipeline's.", file=sys.stderr)
+        print("          Check pagination and block geometry. Do not remove "
+              "approved text or bypass this check to make it fit.", file=sys.stderr)
         return 1
 
     print(f"FITS     {pages} page(s), none overflowing.")

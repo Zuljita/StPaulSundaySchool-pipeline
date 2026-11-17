@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import functools
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -41,6 +42,7 @@ import sys
 import tempfile
 import threading
 import urllib.parse
+import zipfile
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -49,6 +51,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 from stpaul import runner  # noqa: E402
+from stpaul.render import package  # noqa: E402
 
 # design_standards/readme.md, "Type": three faces, three jobs, no overlap.
 # If one of these is missing from a finished PDF, the sheet is not set in
@@ -203,6 +206,32 @@ def source_hash_of(html: Path) -> str:
     return m.group(1) if m else ""
 
 
+def finish_package(handouts: Path, pdfs: list[Path]) -> None:
+    """Refresh the build's ZIP and output inventory after every PDF succeeds.
+
+    build.py cannot include files which the browser has not produced yet.
+    Keep its deterministic ZIP timestamp, and archive the final HTML and PDFs
+    together. Standalone development sheets have no build record to update.
+    """
+    root = handouts.parent
+    record = root / 'BUILD-PROVENANCE.json'
+    if not record.is_file():
+        return
+    provenance = json.loads(record.read_text(encoding='utf-8'))
+    outputs = provenance['outputs']
+    archives = [root / name for name in outputs if name.endswith('.zip')]
+    if len(archives) != 1 or not archives[0].is_file():
+        raise PrintError('Expected one build package to finalise; rebuild this Sunday.')
+    archive = archives[0]
+    with zipfile.ZipFile(archive) as old:
+        timestamp = old.infolist()[0].date_time if old.infolist() else package.EPOCH
+    package.build(package.collect(root), archive, date_time=timestamp)
+    provenance['outputs'] = sorted(set(outputs) | {
+        pdf.relative_to(root).as_posix() for pdf in pdfs})
+    record.write_text(json.dumps(provenance, indent=2, ensure_ascii=False) + '\n',
+                      encoding='utf-8', newline='\n')
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -246,6 +275,12 @@ def main() -> int:
 
     print()
     print(f"{len(sheets) - failures} printed, {failures} failed.")
+    if not failures:
+        try:
+            finish_package(args.handouts, [p.with_suffix('.pdf') for p in sheets])
+        except (PrintError, OSError, ValueError, KeyError, zipfile.BadZipFile) as e:
+            print(f"ERROR    {e}", file=sys.stderr)
+            return 1
     return 1 if failures else 0
 
 

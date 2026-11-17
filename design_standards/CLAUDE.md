@@ -48,6 +48,13 @@ and do not write curriculum prose here to fill a slot. Named slots carry
 Three skeletons only: **teacher's guide**, **student handout**, **family take-home**
 (the craft page borrows the student skeleton). Levels differ by name, never by layout.
 
+The table gives the starting skeleton, not a limit that permits cutting approved
+text. Long material continues onto additional measured sheets within the same
+skeleton section. Keep the type, column widths and page geometry; move paragraphs,
+passages, Law/Gospel pairs and entire lesson steps intact. Repeat the running header,
+number all pages, and put credits on the last page only. A single indivisible block
+that cannot fit a fresh sheet remains an error. Never clip or shrink it to pass.
+
 ## The design standard
 
 `Design Standard.dc.html` is the printed, three-page statement of this system: page

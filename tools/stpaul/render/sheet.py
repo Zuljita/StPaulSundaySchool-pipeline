@@ -346,8 +346,7 @@ strong { font-weight: var(--weight-strong); }
   display: grid;
   grid-template-columns: var(--grid-rail);
   gap: var(--grid-gutter);
-  flex: 1;
-  min-height: 0;
+  flex: none;
 }
 /* The family take-home is the exception: no rail, flowing bands. */
 .frame.one { grid-template-columns: 1fr; }
@@ -1306,7 +1305,8 @@ def _student_handout(lesson: Lesson, piece: Piece, pool: Pool, *,
     even = len(cards) - len(cards) % 2
     band = ""
     if cards[:even]:
-        band += f'<div class="bands two">{"".join(cards[:even])}</div>'
+        band += "".join(f'<div class="bands two">{"".join(cards[i:i + 2])}</div>'
+                        for i in range(0, even, 2))
     band += "".join(cards[even:])
 
     gospel_block = ""
@@ -1425,6 +1425,7 @@ DOC = """\
 <link rel="stylesheet" href="{assets}/tokens/{stylesheet}">
 </head>
 <body>
+{continuation}
 {pages}
 </body>
 </html>
@@ -1451,6 +1452,10 @@ def render(lesson: Lesson, piece: Piece, source_hash: str, out_path: Path,
     out_path.write_text(
         DOC.format(title=_esc(title.strip(" ·")), source_hash=_esc(source_hash),
                    assets=ASSET_DIR, stylesheet=STYLESHEET_NAME,
+                   continuation='<template id="continuation-header">' +
+                   _running_header(_chip_text(lesson, piece),
+                                   " · ".join(x for x in _meta(lesson)[:2] if x)) +
+                   '</template>',
                    pages="\n".join(pages)),
         encoding="utf-8", newline="\n")
     return out_path

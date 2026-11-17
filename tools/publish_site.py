@@ -54,6 +54,7 @@ from stpaul.render.site import (REGISTER_SW, STYLESHEET, render_index,
                                render_manifest, render_service_worker)
 
 DEFAULT_OUT = DATA_ROOT / "dist-site"
+NOTHING_TO_PUBLISH = 3
 
 # Icons and anything else the site serves that is not rendered from
 # content. It lives in the pipeline repository because it is chrome,
@@ -78,6 +79,7 @@ CONTENT_TYPES = {
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
     ".svg": "image/svg+xml",
+    ".woff2": "font/woff2",
 }
 
 
@@ -276,10 +278,8 @@ def stage(cands: list[dict], out: Path) -> list[dict]:
         # /handouts/ prefix and the bucket agree by construction.
         hdest = out / "handouts" / slug
         if c["handouts"].is_dir():
-            hdest.mkdir(parents=True, exist_ok=True)
-            for f in sorted(c["handouts"].iterdir()):
-                if f.is_file():
-                    shutil.copy2(f, hdest / f.name)
+            # HTML sheets depend on nested _print/ styles, fonts and artwork.
+            shutil.copytree(c["handouts"], hdest)
 
         # The whole-week archive, which build.py writes beside the
         # Sunday rather than inside the directory it archives.
@@ -322,29 +322,34 @@ def main() -> int:
     dist = Path(args.dist)
     if not dist.is_dir():
         print(f"Nothing built: {dist} does not exist.")
-        return 1
+        return NOTHING_TO_PUBLISH
 
     slugs = args.sunday or sorted(
         d.name for d in dist.iterdir()
         if d.is_dir() and (d / "BUILD-PROVENANCE.json").is_file())
 
     cands, skipped = [], []
+    failed = False
     for slug in slugs:
         try:
             cands.append(candidate(slug, dist))
         except Skipped as e:
             skipped.append((slug, str(e)))
         except Exception as e:
+            failed = True
             skipped.append((slug, f"{type(e).__name__}: {e}"))
 
     for slug, why in skipped:
         print(f"SKIPPED  {slug}\n         {why}")
     if skipped:
         print()
+    if failed:
+        print('A build could not be inspected. Refusing to stage a partial site.', file=sys.stderr)
+        return 1
 
     if not cands:
         print("Nothing to publish.")
-        return 1
+        return NOTHING_TO_PUBLISH
 
     out = Path(args.out)
     rows = stage(cands, out)
