@@ -1076,6 +1076,32 @@ class PublishGateTestCase(unittest.TestCase):
         self.approve()
         self.assertEqual(self.candidate()["slug"], SLUG)
 
+    def test_staging_copies_print_assets_and_records_their_types(self):
+        from unittest.mock import patch
+        self.build()
+        self.approve()
+        assets = self.dist / SLUG / 'handouts' / '_print' / 'assets' / 'fonts'
+        assets.mkdir(parents=True)
+        (assets / 'test.woff2').write_bytes(b'invented font bytes')
+        out = self.tmp / 'staged'
+        with patch.object(self.publish_site, 'as_of_date', return_value=_dt.date(2026, 1, 4)):
+            rows = self.publish_site.stage([self.candidate()], out)
+        key = f'handouts/{SLUG}/_print/assets/fonts/test.woff2'
+        self.assertEqual((out / key).read_bytes(), b'invented font bytes')
+        self.assertEqual(next(r['content_type'] for r in rows if r['key'] == key), 'font/woff2')
+
+    def test_malformed_build_record_is_an_error_not_an_empty_site(self):
+        from unittest.mock import patch
+        self.build()
+        (self.dist / SLUG / 'BUILD-PROVENANCE.json').write_text('{broken', encoding='utf-8')
+        with patch.object(sys, 'argv', ['publish_site.py', '--local', '--dist', str(self.dist)]):
+            self.assertEqual(self.publish_site.main(), 1)
+
+    def test_no_builds_has_a_distinct_exit_status(self):
+        from unittest.mock import patch
+        with patch.object(sys, 'argv', ['publish_site.py', '--local', '--dist', str(self.dist)]):
+            self.assertEqual(self.publish_site.main(), self.publish_site.NOTHING_TO_PUBLISH)
+
     def test_a_draft_is_never_published(self):
         self.build(draft=True)
         self.approve()

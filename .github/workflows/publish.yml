@@ -21,16 +21,17 @@ name: publish
 #
 #   1. make_review    a new Sunday becomes visible to sign in and review
 #   2. build          only what verify() says is approved, right now
-#   3. fit_check      no sheet runs past the page box it will be clipped to
-#   4. print_pdf      the sheets become paper, in the design system's type
-#   5. publish_site   re-checks the hash and the approval before staging
-#   6. publish_r2     uploads what survived all of it
+#   3. paginate      move whole blocks onto measured continuation pages
+#   4. fit_check     independently check every page boundary
+#   5. print_pdf     print the sheets and refresh the download package
+#   6. publish_site  re-check the hash and approval before staging
+#   7. publish_r2    upload what survived all of it
 #
 # Nothing in that chain can publish unapproved text. Step 2 refuses it,
-# and step 5 refuses it again against the content as it stands at publish
+# and step 6 refuses it again against the content as it stands at publish
 # time rather than as it stood at build time.
 #
-# Steps 3 and 4 need a browser, which is why they are not part of build.py:
+# Steps 3 through 5 need a browser, so they are not part of build.py:
 # that pass is pure Python and a function of the approved bytes alone. A
 # page box that clips and a font that silently falls back are both things
 # only a rendering engine can tell you about, and both fail the run rather
@@ -166,14 +167,22 @@ jobs:
         # moment; that is the normal state, not an error.
         run: python tools/build.py --all --approved-only
 
+      - name: Lay out the printed pages
+        env:
+          STPAUL_DATA: ${{ runner.temp }}/data
+        run: |
+          shopt -s nullglob
+          for d in "${RUNNER_TEMP}"/data/dist/*/handouts; do
+            python tools/paginate.py "$d"
+          done
+
       - name: Check every sheet fits its page
         env:
           STPAUL_DATA: ${{ runner.temp }}/data
         # design_standards/readme.md: "the page box clips - a sheet that
         # runs long loses its footer silently." This is the design project's
-        # own fit-check procedure, run by a machine. A sheet that overflows
-        # is more content than the paper holds, and what comes off it is the
-        # author's decision, so this reports and stops rather than guessing.
+        # own fit-check procedure, run independently after pagination.
+        # An indivisible block that cannot fit still stops publication.
         run: |
           shopt -s nullglob
           for d in "${RUNNER_TEMP}"/data/dist/*/handouts; do
@@ -193,15 +202,17 @@ jobs:
         id: stage
         env:
           STPAUL_DATA: ${{ runner.temp }}/data
-        # Exits non-zero when there is nothing publishable at all, which
-        # is a legitimate state before the first approval.
+        # Only exit 3 means nothing is publishable. A staging exception
+        # must remain a failed run, not be reported as an empty curriculum.
         run: |
-          if python tools/publish_site.py; then
-            echo "staged=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "Nothing publishable yet."
-            echo "staged=false" >> "$GITHUB_OUTPUT"
-          fi
+          status=0
+          python tools/publish_site.py || status=$?
+          case "$status" in
+            0) echo "staged=true" >> "$GITHUB_OUTPUT" ;;
+            3) echo "Nothing publishable yet."
+               echo "staged=false" >> "$GITHUB_OUTPUT" ;;
+            *) exit "$status" ;;
+          esac
 
       - name: Upload to R2
         if: steps.stage.outputs.staged == 'true' && !inputs.skip_upload
@@ -212,6 +223,8 @@ jobs:
 
       - name: Say what is live
         if: steps.stage.outputs.staged == 'true'
+        env:
+          SKIP_UPLOAD: ${{ inputs.skip_upload }}
         run: |
           python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json, os, pathlib
@@ -220,14 +233,15 @@ jobs:
           ).read_text())
           objs = m["objects"]
           total = sum(o["bytes"] for o in objs)
-          print("## Published\n")
+          uploaded = os.environ.get("SKIP_UPLOAD") != "true"
+          print("## Published\n" if uploaded else "## Staged (upload skipped)\n")
           print(f"- {len(objs)} object(s), {total/1024:.0f} KiB")
           print(f"- service worker cache `{m['cache_version']}`\n")
           print("| Sunday | |")
           print("|---|---|")
           for o in objs:
               if o["key"].endswith("/index.html") and o["key"] != "index.html":
-                  print(f"| {o['key'].split('/')[0]} | published |")
+                  print(f"| {o['key'].split('/')[0]} | {'published' if uploaded else 'staged'} |")
           PY
 
       - name: Leave no curriculum behind

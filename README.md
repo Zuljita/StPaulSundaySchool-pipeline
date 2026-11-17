@@ -120,6 +120,14 @@ word for word.
 
 ## Quick start
 
+Publication lays out the generated sheets with `tools/paginate.py`, checks
+them independently with `tools/fit_check.py`, then prints them with
+`tools/print_pdf.py`. The print step refreshes the ZIP and output inventory
+after all PDFs succeed. Skeleton page counts describe starting sections;
+long approved material gets continuation pages with the same type, columns,
+running headers and numbered footers. Paragraphs and complete lesson steps
+move intact. A block taller than an entire sheet still fails publication.
+
 For working on the pipeline itself. Running it is the workflows' job.
 
 ```powershell
